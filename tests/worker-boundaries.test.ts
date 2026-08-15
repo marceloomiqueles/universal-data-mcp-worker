@@ -7,12 +7,18 @@ const assets = {
     new Response('<!doctype html><html><body>SPA</body></html>', {
       headers: { 'content-type': 'text/html' },
     }),
-} as Fetcher
+}
 
 describe('Worker routing boundaries', () => {
   it.each([
-    ['/api/status', 'admin-api'],
+    ['/api', 'admin-api'],
+    ['/api/', 'admin-api'],
+    ['/api/health', 'admin-api'],
+    ['/api/health?check=1', 'admin-api'],
+    ['/mcp', 'mcp'],
+    ['/mcp/', 'mcp'],
     ['/mcp/session', 'mcp'],
+    ['/mcp/session?check=1', 'mcp'],
   ])('keeps %s out of the SPA', async (path, boundary) => {
     const response = await handleRequest(
       new Request(`https://example.test${path}`),
@@ -29,15 +35,18 @@ describe('Worker routing boundaries', () => {
     })
   })
 
-  it('delegates browser routes to the static asset binding', async () => {
-    const response = await handleRequest(
-      new Request('https://example.test/status'),
-      {
-        ASSETS: assets,
-      },
-    )
+  it.each(['/status', '/apiary', '/mcproxy'])(
+    'delegates %s to the static asset binding',
+    async (path) => {
+      const response = await handleRequest(
+        new Request(`https://example.test${path}`),
+        {
+          ASSETS: assets,
+        },
+      )
 
-    expect(response.status).toBe(200)
-    expect(response.headers.get('content-type')).toContain('text/html')
-  })
+      expect(response.status).toBe(200)
+      expect(response.headers.get('content-type')).toContain('text/html')
+    },
+  )
 })

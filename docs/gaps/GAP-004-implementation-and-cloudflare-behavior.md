@@ -29,6 +29,8 @@ The 2026-08-15 pre-scaffolding audit confirmed that Cloudflare currently support
 
 The initial scaffold subsequently established and locked mutually compatible versions for Node, pnpm, Vue, Vuetify, Vue Router, Vite, TypeScript, the Cloudflare Vite plugin, Wrangler, and Worker types. Vitest, ESLint, TypeScript-ESLint, eslint-plugin-vue, and Prettier are operational. Local development and built Worker preview both demonstrated that `/` and `/status` use the SPA while `/api/*` and `/mcp/*` reach the Worker first. These results close the version, test-tooling, lint/format-tooling, and basic static-routing portions of this gap; they do not validate MCP protocol behavior or production deployment.
 
+The scaffold-hardening follow-up added regression coverage for exact, nested, trailing-slash, query-string, and near-prefix Worker routes; reused production Vue Router definitions in Admin tests; verified Vuetify responsive navigation behavior; and added separate static typecheck projects for Admin and Worker tests. These findings are resolved without changing the remaining MCP, persistence, sync, provider, or production-deployment gaps.
+
 ## Constraint While Open
 
 Do not select dependencies for convenience or add infrastructure without demonstrated need. Justify every dependency by problem, compatibility, bundle, maintenance, and security.

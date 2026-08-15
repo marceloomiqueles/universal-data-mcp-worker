@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.app.json",
+  "compilerOptions": {
+    "types": ["vite/client", "vitest/globals"]
+  },
+  "include": [
+    "src/admin/**/*.ts",
+    "src/admin/**/*.vue",
+    "src/admin/**/*.d.ts",
+    "tests/admin-spa.test.ts"
+  ]
+}

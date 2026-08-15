@@ -1,38 +1,33 @@
 import { createApp, nextTick } from 'vue'
-import { createMemoryHistory, createRouter } from 'vue-router'
+import { createMemoryHistory } from 'vue-router'
 import { afterEach, describe, expect, it } from 'vitest'
 
 import App from '../src/admin/App.vue'
-import HomeView from '../src/admin/views/HomeView.vue'
-import LoginView from '../src/admin/views/LoginView.vue'
-import NotFoundView from '../src/admin/views/NotFoundView.vue'
-import StatusView from '../src/admin/views/StatusView.vue'
+import { createAdminRouter } from '../src/admin/router'
 import { vuetify } from '../src/admin/vuetify'
 
 let mountedElement: HTMLElement | undefined
+let mountedApp: ReturnType<typeof createApp> | undefined
 
 afterEach(() => {
+  mountedApp?.unmount()
   mountedElement?.remove()
+  mountedApp = undefined
   mountedElement = undefined
+  window.innerWidth = 1024
+  window.dispatchEvent(new Event('resize'))
 })
 
 async function renderRoute(path: string): Promise<HTMLElement> {
-  const router = createRouter({
-    history: createMemoryHistory(),
-    routes: [
-      { path: '/', component: HomeView },
-      { path: '/login', component: LoginView },
-      { path: '/status', component: StatusView },
-      { path: '/:pathMatch(.*)*', component: NotFoundView },
-    ],
-  })
+  const router = createAdminRouter(createMemoryHistory())
 
   await router.push(path)
   await router.isReady()
 
   mountedElement = document.createElement('div')
   document.body.append(mountedElement)
-  createApp(App).use(router).use(vuetify).mount(mountedElement)
+  mountedApp = createApp(App)
+  mountedApp.use(router).use(vuetify).mount(mountedElement)
   await nextTick()
 
   return mountedElement
@@ -62,9 +57,41 @@ describe('Admin SPA', () => {
     )
   })
 
+  it('renders the production loading route', async () => {
+    const element = await renderRoute('/loading')
+
+    expect(element.textContent).toContain('Loading application state')
+  })
+
   it('renders the not-found state', async () => {
     const element = await renderRoute('/missing')
 
     expect(element.textContent).toContain('Page not found')
+  })
+
+  it('uses a temporary navigation drawer on narrow screens', async () => {
+    window.innerWidth = 375
+    window.dispatchEvent(new Event('resize'))
+    const element = await renderRoute('/')
+    const toggle = element.querySelector<HTMLButtonElement>(
+      '[aria-label="Toggle navigation"]',
+    )
+
+    expect(toggle).not.toBeNull()
+    expect(element.querySelector('.v-navigation-drawer--active')).toBeNull()
+
+    toggle?.click()
+    await nextTick()
+
+    expect(element.querySelector('.v-navigation-drawer--active')).not.toBeNull()
+  })
+
+  it('keeps persistent navigation on wide screens', async () => {
+    window.innerWidth = 1440
+    window.dispatchEvent(new Event('resize'))
+    const element = await renderRoute('/')
+
+    expect(element.querySelector('[aria-label="Toggle navigation"]')).toBeNull()
+    expect(element.querySelector('.v-navigation-drawer--active')).not.toBeNull()
   })
 })
