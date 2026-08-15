@@ -1,0 +1,44 @@
+name: Feature request
+description: Propose a capability grounded in a real problem or use case.
+title: "[Feature]: "
+body:
+  - type: markdown
+    attributes:
+      value: Describe evidence and user need before abstraction or implementation. Do not include sensitive data.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What real problem is not solved, and who experiences it?
+    validations:
+      required: true
+  - type: textarea
+    id: use_case
+    attributes:
+      label: Use case and value
+      description: Give a concrete scenario and expected value.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence
+      description: Links, observations, repeated pain, or provider/platform behavior.
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+  - type: textarea
+    id: impact
+    attributes:
+      label: Potential impact
+      description: Consider privacy, data volume, compatibility, free-tier cost, operation, and boundaries.
+  - type: checkboxes
+    id: scope
+    attributes:
+      label: Scope check
+      options:
+        - label: This describes a real use case rather than a speculative framework or abstraction.
+          required: true
+        - label: I included no credentials, tokens, or personal data.
+          required: true

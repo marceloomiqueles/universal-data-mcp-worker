@@ -1,0 +1,56 @@
+name: Integration request
+description: Suggest a real data source that could contribute useful MCP capabilities.
+title: "[Integration]: "
+body:
+  - type: markdown
+    attributes:
+      value: Garmin remains the first integration used to validate boundaries. This form collects evidence; it does not define a plugin contract or promise implementation.
+  - type: input
+    id: source
+    attributes:
+      label: Data source
+    validations:
+      required: true
+  - type: textarea
+    id: use_case
+    attributes:
+      label: User problem and MCP use case
+      description: What questions or actions would this make possible?
+    validations:
+      required: true
+  - type: textarea
+    id: access
+    attributes:
+      label: API or protocol
+      description: Describe the official/public API or protocol and its maturity.
+    validations:
+      required: true
+  - type: input
+    id: docs
+    attributes:
+      label: Public documentation
+      description: Link to official API, protocol, terms, or auth documentation.
+  - type: textarea
+    id: auth
+    attributes:
+      label: Authentication
+      description: Known method/scopes/constraints. Do not share credentials.
+  - type: textarea
+    id: persistence
+    attributes:
+      label: Persistence and synchronization needs
+      description: Explain whether local storage or sync appears necessary. "Unknown" is valid.
+  - type: textarea
+    id: value
+    attributes:
+      label: Why this belongs in the project
+      description: Explain demand, privacy implications, and value relative to Garmin-first scope.
+    validations:
+      required: true
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Safety check
+      options:
+        - label: I included no credentials, tokens, personal data, or private API material.
+          required: true
