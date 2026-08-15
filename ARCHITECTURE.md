@@ -151,7 +151,7 @@ The initial deployment has one owner/admin. Authentication requires an admin cre
 
 The session is server-managed. The SPA neither reads nor persists the session token. Frontend route guards are navigation UX only; the Admin API enforces authentication.
 
-The first backend slice now uses D1 for the singleton owner credential and revocable Admin sessions. Passwords use a versioned PBKDF2-HMAC-SHA-256 verifier through Workers Web Crypto. Opaque session tokens are stored only as SHA-256 digests and delivered in an `HttpOnly`, `SameSite=Strict`, `/api`-scoped cookie with a 12-hour absolute lifetime. A temporary Cloudflare `OWNER_SETUP_TOKEN` protects atomic first-owner creation. The Admin UI behavior remains unimplemented.
+The first backend slice now uses D1 for the singleton owner credential and revocable Admin sessions. Passwords use a versioned PBKDF2-HMAC-SHA-256 verifier through Workers Web Crypto. Opaque session tokens are stored only as SHA-256 digests and delivered in an `HttpOnly`, `SameSite=Strict`, `/api`-scoped cookie with a 12-hour absolute lifetime. A temporary Cloudflare `OWNER_SETUP_TOKEN` protects atomic first-owner creation. The deployment owner enters through a setup URL carrying the proof in its fragment; the future SPA must remove the fragment immediately, retain the proof only in memory, and transport it in a dedicated setup header rather than presenting it as account data. The Admin UI behavior remains unimplemented.
 
 ## Scaffold and Repository Shape
 

@@ -35,6 +35,8 @@ The owner-session backend selected no runtime auth framework. It uses Workers We
 
 The 600,000-iteration PBKDF2 operation measured approximately 76–88 ms wall time in the local built Worker preview. Actual production CPU accounting and free-tier compatibility remain unvalidated and must be measured before claiming production readiness. Wrangler migrations were validated on an empty local database and through repeated test application; automatic startup/deploy and integration-activation migration behavior remains open.
 
+The first-run contract now transports the bootstrap proof separately from account data. The installation context supplies a `/login#bootstrap=<proof>` URL; fragments stay out of the initial HTTP request, and the future SPA will erase the fragment and submit the in-memory proof through `X-Owner-Bootstrap-Proof`. Producing that complete link automatically remains part of the unimplemented deployment experience. Until deployment automation exists, the maintainer must generate one random value, configure it as `OWNER_SETUP_TOKEN`, and construct the matching setup link.
+
 ## Constraint While Open
 
 Do not select dependencies for convenience or add infrastructure without demonstrated need. Justify every dependency by problem, compatibility, bundle, maintenance, and security.

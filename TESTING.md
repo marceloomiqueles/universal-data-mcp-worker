@@ -55,7 +55,7 @@ GET  /api/auth/session
 POST /api/auth/logout
 ```
 
-All POST requests require `Content-Type: application/json` and an `Origin` exactly matching the Worker origin. Setup requires `setupCode`, `username`, and `password`; password confirmation remains a client responsibility. Remove the setup secret after the owner is created. The current UI does not submit these operations yet.
+All POST requests require `Content-Type: application/json` and an `Origin` exactly matching the Worker origin. Setup JSON contains only `username` and `password`; password confirmation remains a client responsibility. Authorization is supplied separately through the `X-Owner-Bootstrap-Proof` header. The future SPA obtains that proof from `/login#bootstrap=<proof>`, removes the fragment, and keeps it only in memory. Remove the setup secret after the owner is created. The current UI does not submit these operations yet.
 
 Local preview validation has confirmed setup status, first setup, current session, authenticated Admin API access, logout, post-logout rejection, and unchanged MCP boundary behavior. PBKDF2 login measured approximately 76–88 ms wall time in local workerd. This is not production CPU evidence.
 

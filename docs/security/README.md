@@ -10,7 +10,7 @@ This document records implemented Admin authentication controls and requirements
 
 The self-hosted deployment has one owner. Do not design multi-user behavior, organizations, RBAC, invitations, email verification/recovery, or enterprise identity.
 
-The Worker implements one owner with a username and password. First setup requires a temporary high-entropy `OWNER_SETUP_TOKEN` Cloudflare secret and an atomic singleton D1 insert, preventing a public first visitor from claiming the deployment. Setup never overwrites an existing owner.
+The Worker implements one owner with a username and password. First setup requires a temporary high-entropy `OWNER_SETUP_TOKEN` Cloudflare secret and an atomic singleton D1 insert, preventing a public first visitor from claiming the deployment. The installation context provides the same proof in the fragment of a one-time setup URL. Fragments are not sent while loading the page; the future SPA must remove the fragment immediately, keep the proof only in memory, and submit it through `X-Owner-Bootstrap-Proof`. The proof is not account form data, is never persisted, and cannot overwrite an existing owner.
 
 Passwords are stored as versioned PBKDF2-HMAC-SHA-256 verifiers with a random 16-byte salt and 600,000 iterations through Workers Web Crypto. Password input is bounded to 12–128 characters and 256 UTF-8 bytes. Plaintext passwords and setup tokens are not persisted.
 

@@ -7,6 +7,7 @@ import {
 } from './crypto'
 
 const SESSION_COOKIE = 'admin_session'
+const BOOTSTRAP_PROOF_HEADER = 'x-owner-bootstrap-proof'
 const SESSION_LIFETIME_SECONDS = 12 * 60 * 60
 const USERNAME_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{2,63}$/u
 
@@ -30,10 +31,6 @@ interface SessionRecord {
 interface Credentials {
   username: string
   password: string
-}
-
-interface SetupCredentials extends Credentials {
-  setupCode: string
 }
 
 function json(data: unknown, status = 200, headers?: HeadersInit): Response {
@@ -80,13 +77,6 @@ function hasCredentials(value: unknown): value is Credentials {
   return (
     typeof candidate.username === 'string' &&
     typeof candidate.password === 'string'
-  )
-}
-
-function hasSetupCredentials(value: unknown): value is SetupCredentials {
-  return (
-    hasCredentials(value) &&
-    typeof (value as Partial<SetupCredentials>).setupCode === 'string'
   )
 }
 
@@ -208,20 +198,22 @@ async function setupOwner(
   }
 
   const body = await readJson<unknown>(request)
-  if (!hasSetupCredentials(body)) {
+  if (!hasCredentials(body)) {
     return error('INVALID_REQUEST', 'Valid setup details are required.', 400)
   }
 
-  const { username, password, setupCode } = body
+  const { username, password } = body
   if (!USERNAME_PATTERN.test(username) || !validPassword(password)) {
     return error('INVALID_REQUEST', 'Valid setup details are required.', 400)
   }
 
+  const bootstrapProof = request.headers.get(BOOTSTRAP_PROOF_HEADER)
   if (
     !env.OWNER_SETUP_TOKEN ||
     env.OWNER_SETUP_TOKEN.length < 32 ||
-    setupCode.length > 512 ||
-    !(await secretsEqual(setupCode, env.OWNER_SETUP_TOKEN))
+    !bootstrapProof ||
+    bootstrapProof.length > 512 ||
+    !(await secretsEqual(bootstrapProof, env.OWNER_SETUP_TOKEN))
   ) {
     return error('SETUP_UNAVAILABLE', 'Owner setup is not authorized.', 403)
   }

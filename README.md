@@ -69,15 +69,23 @@ pnpm exec wrangler d1 migrations apply DB --local
 pnpm dev
 ```
 
-Before starting the Worker for owner setup, create an ignored `.dev.vars` file containing a high-entropy, temporary setup code:
+Before starting the Worker for owner setup, generate one high-entropy bootstrap proof and place it in an ignored `.dev.vars` file:
 
 ```dotenv
 OWNER_SETUP_TOKEN="replace-with-a-random-value-of-at-least-32-characters"
 ```
 
-The backend accepts that code only while no owner exists. Remove it from `.dev.vars` after successful setup. Do not commit the file or reuse the example value. The current SPA still has a visual login placeholder, so exercise the backend through its API until the separate Admin UI stage is implemented. See [TESTING.md](TESTING.md) for the endpoint behavior and verified commands.
+Open the matching local setup URL:
 
-There is no end-user deployment guide because production deployment and the complete product flow have not been validated. A real Cloudflare deployment must replace the placeholder D1 identifier, apply migrations, and configure `OWNER_SETUP_TOKEN` as a Cloudflare secret before first-run setup. Do not use ordinary Wrangler variables for that secret.
+```text
+http://localhost:5173/login#bootstrap=replace-with-the-same-random-value
+```
+
+The URL fragment is not sent to the Worker while loading the SPA. The upcoming Session UI will remove it immediately, keep the proof only in memory, and submit it separately from the username/password form. The backend accepts the proof only while no owner exists. Remove it from `.dev.vars` after successful setup. Do not commit or reuse the example value.
+
+The current SPA still has a visual login placeholder, so the authorized link capture is not implemented yet. Backend-only API validation supplies the same proof through `X-Owner-Bootstrap-Proof`; see [TESTING.md](TESTING.md).
+
+There is no end-user deployment guide because production deployment and the complete product flow have not been validated. A real Cloudflare deployment must replace the placeholder D1 identifier, apply migrations, generate one proof, configure it as the `OWNER_SETUP_TOKEN` Cloudflare secret, and provide the owner with `https://<deployment>/login#bootstrap=<proof>`. Do not put the proof in a query string or ordinary Wrangler variable. Automated generation of this link remains a deployment gap.
 
 ```text
 Deploy → Admin Web → connect Garmin → sync → connect MCP → ChatGPT

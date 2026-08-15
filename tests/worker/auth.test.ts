@@ -41,13 +41,14 @@ function post(
 async function setupOwner(
   username = 'owner',
   password = 'correct horse battery staple',
+  bootstrapProof = env.OWNER_SETUP_TOKEN,
 ): Promise<{ response: Response; cookie: string }> {
   const response = await handleRequest(
-    post('/api/auth/setup', {
-      setupCode: env.OWNER_SETUP_TOKEN,
-      username,
-      password,
-    }),
+    post(
+      '/api/auth/setup',
+      { username, password },
+      { 'x-owner-bootstrap-proof': bootstrapProof },
+    ),
     workerEnv(),
   )
   const setCookie = response.headers.get('set-cookie') ?? ''
@@ -114,7 +115,6 @@ describe('owner setup', () => {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
-          setupCode: env.OWNER_SETUP_TOKEN,
           username: 'owner',
           password: 'correct horse battery staple',
         }),
@@ -123,22 +123,29 @@ describe('owner setup', () => {
     )
     expect(missingOrigin.status).toBe(403)
 
-    const invalidCode = await handleRequest(
+    const invalidCode = await setupOwner(
+      'owner',
+      'correct horse battery staple',
+      'incorrect',
+    )
+    expect(invalidCode.response.status).toBe(403)
+
+    const proofInAccountData = await handleRequest(
       post('/api/auth/setup', {
-        setupCode: 'incorrect',
+        setupCode: env.OWNER_SETUP_TOKEN,
         username: 'owner',
         password: 'correct horse battery staple',
       }),
       workerEnv(),
     )
-    expect(invalidCode.status).toBe(403)
+    expect(proofInAccountData.status).toBe(403)
 
     const shortPassword = await handleRequest(
-      post('/api/auth/setup', {
-        setupCode: env.OWNER_SETUP_TOKEN,
-        username: 'owner',
-        password: 'too-short',
-      }),
+      post(
+        '/api/auth/setup',
+        { username: 'owner', password: 'too-short' },
+        { 'x-owner-bootstrap-proof': env.OWNER_SETUP_TOKEN },
+      ),
       workerEnv(),
     )
     expect(shortPassword.status).toBe(400)
@@ -167,6 +174,42 @@ describe('owner setup', () => {
         'SELECT COUNT(*) AS count FROM admin_sessions',
       ).first('count'),
     ).toBe(1)
+  })
+
+  it('never accepts an old proof to replace the existing owner', async () => {
+    const initial = await setupOwner('original-owner')
+    expect(initial.response.status).toBe(201)
+
+    const replacement = await setupOwner('replacement-owner')
+    expect(replacement.response.status).toBe(409)
+    expect(
+      await env.DB.prepare('SELECT username FROM owner_credentials').first(
+        'username',
+      ),
+    ).toBe('original-owner')
+  })
+
+  it('keeps the bootstrap proof out of account data and responses', async () => {
+    const response = await handleRequest(
+      post(
+        '/api/auth/setup',
+        {
+          username: 'owner',
+          password: 'correct horse battery staple',
+          setupCode: env.OWNER_SETUP_TOKEN,
+        },
+        { 'x-owner-bootstrap-proof': env.OWNER_SETUP_TOKEN },
+      ),
+      workerEnv(),
+    )
+    const responseText = await response.text()
+    expect(response.status).toBe(201)
+    expect(responseText).not.toContain(env.OWNER_SETUP_TOKEN)
+
+    const ownerColumns = await env.DB.prepare(
+      'SELECT * FROM owner_credentials',
+    ).first<Record<string, unknown>>()
+    expect(JSON.stringify(ownerColumns)).not.toContain(env.OWNER_SETUP_TOKEN)
   })
 })
 
