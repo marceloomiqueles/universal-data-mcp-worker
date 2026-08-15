@@ -8,9 +8,9 @@ Garmin Connect → Cloudflare Worker → D1 where appropriate → MCP → ChatGP
 
 ## Current Status
 
-The project is in its documentation and architectural design phase. There is no application, deployable Worker, Garmin integration, Admin Web, MCP endpoint, D1 schema, migration, installation command, or test command yet.
+The project has an initial deployable scaffold: a Vue/Vuetify Admin SPA and one Cloudflare Worker with reserved Admin API and MCP route boundaries. The boundaries are validated locally, but no Garmin integration, authentication, MCP protocol behavior, D1 schema, migration, sync, or other product functionality exists yet.
 
-The current foundation preserves architectural decisions and explicit gaps so that component and dependency design can proceed without prematurely inventing contracts.
+The current foundation proves the single-deployment build and routing model without prematurely inventing product contracts.
 
 Because this is a public repository, examples, fixtures, logs, and documents must never contain real credentials, tokens, or personal data.
 
@@ -50,15 +50,27 @@ The operational goal is additional infrastructure cost close to `$0` for reasona
 
 ## Current Scope
 
-This repository documents the product direction and prepares its technical design. It does not provide usable functionality yet.
+This repository contains a working infrastructure scaffold and the product direction. It does not provide usable Garmin or MCP functionality yet.
 
 Without explicit agreement, the scope excludes multi-tenancy, enterprise RBAC, billing, fictional verticals, a plugin marketplace, dynamic code loading, a universal sports model, forecasting, ML, BI, and speculative infrastructure.
 
-## Requirements, Installation, and Configuration
+## Development Setup
 
-There is no installable artifact, application dependency set, or executable configuration yet. Consequently, there are no official setup or deployment commands.
+Requirements:
 
-Once implemented and verified, this section will link to reproducible guidance for:
+- Node.js 22.13 or newer;
+- pnpm 11.22.0 or a compatible pnpm 11 release.
+
+Install dependencies and start the local Cloudflare/Vite development environment:
+
+```sh
+pnpm install
+pnpm dev
+```
+
+The development server exposes the SPA and the Worker route boundaries in one local application. See [TESTING.md](TESTING.md) for verified validation commands.
+
+There is no end-user installation or deployment guide because product functionality and a real deployment procedure do not exist yet. That future guide must validate the intended flow before documenting it:
 
 ```text
 Deploy → Admin Web → connect Garmin → sync → connect MCP → ChatGPT
@@ -110,6 +122,7 @@ This is an independent project. It is not affiliated with, endorsed by, or spons
 - [Initial documentation audit](docs/audits/2026-08-15-initial-documentation-audit.md)
 - [Security and privacy](docs/security/README.md)
 - [Security policy](SECURITY.md)
+- [Testing and validation](TESTING.md)
 - [Contributing](CONTRIBUTING.md)
 - [Support](SUPPORT.md)
 - [Legal and intellectual-property index](docs/legal/README.md)

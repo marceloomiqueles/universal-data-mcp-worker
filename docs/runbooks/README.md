@@ -2,7 +2,7 @@
 
 ## Status
 
-No executable runbooks exist because there is no application, deployment, command, or verified signal. Inventing them would create false operational capability.
+No operational deployment runbooks exist because the current application is only a locally validated scaffold with no product behavior or verified production deployment procedure. Inventing runbooks now would create false operational capability.
 
 This document records the agreed operational contract and the threshold for creating concrete procedures.
 

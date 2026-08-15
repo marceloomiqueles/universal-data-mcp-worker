@@ -24,7 +24,14 @@ Open an issue before a large or hard-to-reverse architectural change. Small, obv
 
 ## Development Environment
 
-There is no executable application or tooling yet. Cloning the repository and editing Markdown with Git is currently sufficient. There are no build, lint, formatting, migration, or test commands to run. Verified commands will be documented when tooling exists; do not invent them.
+Use Node.js 22.13 or newer and pnpm 11.22.0 or a compatible pnpm 11 release. From the repository root:
+
+```sh
+pnpm install
+pnpm dev
+```
+
+The repository is one root project with one lockfile. It does not use package workspaces; `pnpm-workspace.yaml` contains pnpm 11 build-script trust settings only. Run the verified checks in [TESTING.md](TESTING.md) before opening a pull request.
 
 ## Contribution Flow
 
@@ -41,7 +48,7 @@ Never publish credentials, tokens, personal data, complete provider payloads, pr
 
 ## Tests, Migrations, and Idempotency
 
-Follow the [testing policy](docs/standards-and-conventions/testing-policy.md). Once D1 exists, schema changes require incremental migrations that preserve existing deployments. Changes to bootstrap, sync, reconciliation, retries, migrations, retention, or purge must verify idempotency and partial-failure behavior.
+Follow [TESTING.md](TESTING.md) and the [testing policy](docs/standards-and-conventions/testing-policy.md). Once D1 exists, schema changes require incremental migrations that preserve existing deployments. Changes to bootstrap, sync, reconciliation, retries, migrations, retention, or purge must verify idempotency and partial-failure behavior.
 
 ## Documentation, ADRs, and Gaps
 

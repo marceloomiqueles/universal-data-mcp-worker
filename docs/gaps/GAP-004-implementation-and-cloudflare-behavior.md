@@ -1,13 +1,11 @@
-# GAP-004: Implementation Choices and Real Platform Behavior
+# GAP-004: Remaining Implementation Choices and Real Platform Behavior
 
 - Status: Open
 - Source: `AGENTS.md`
 
 ## Unknowns
 
-- Exact mutually compatible versions for pnpm, Vue, Vuetify, Vue Router, Vite, the official Cloudflare Vite integration, Wrangler, TypeScript, and Worker types.
 - Concrete libraries for MCP, Worker routing, validation, auth, hashing, and retry.
-- Exact test runner and lint/format tooling.
 - Worker/MCP transport and runtime compatibility under `workerd` and deployed Workers.
 - Whether concurrent sync requires locking/coalescing.
 - D1 migration runner atomicity, duration, and recovery.
@@ -15,7 +13,7 @@
 
 ## Why It Does Not Block Now
 
-The one-root pnpm/Vite/Worker scaffold, SPA framework, UI framework, and conceptual routing are decided. Exact versions and runtime mechanisms still require compatibility evidence.
+The scaffold now validates the one-root pnpm/Vite/Worker build, SPA framework, UI framework, and route precedence locally. Product runtime mechanisms still require evidence from their first real consumers.
 
 ## Evidence Needed to Close
 
@@ -28,6 +26,8 @@ The one-root pnpm/Vite/Worker scaffold, SPA framework, UI framework, and concept
 ## Evidence Collected
 
 The 2026-08-15 pre-scaffolding audit confirmed that Cloudflare currently supports a Vite-native Worker development/build path, integrated static SPA assets, SPA fallback, and explicit Worker-first route patterns. ADR-0007 selected that mechanism and the one-root project shape. This does not select exact dependency versions or validate MCP, migration-at-activation, or concurrency behavior.
+
+The initial scaffold subsequently established and locked mutually compatible versions for Node, pnpm, Vue, Vuetify, Vue Router, Vite, TypeScript, the Cloudflare Vite plugin, Wrangler, and Worker types. Vitest, ESLint, TypeScript-ESLint, eslint-plugin-vue, and Prettier are operational. Local development and built Worker preview both demonstrated that `/` and `/status` use the SPA while `/api/*` and `/mcp/*` reach the Worker first. These results close the version, test-tooling, lint/format-tooling, and basic static-routing portions of this gap; they do not validate MCP protocol behavior or production deployment.
 
 ## Constraint While Open
 

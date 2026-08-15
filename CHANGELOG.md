@@ -15,8 +15,14 @@ The project has no releases or versioning policy yet. Until the first distributa
 - Accepted the Vue/Vuetify/Vue Router frontend and single pnpm/Vite/Worker scaffold baseline.
 - Excluded Vuexy source and protected assets after reviewing the Project Owner's Regular License.
 
+### Infrastructure
+
+- Added the minimal single-root Vue 3, Vuetify, Vue Router, Vite, and Cloudflare Worker scaffold.
+- Established Worker-first `/api/*` and `/mcp/*` boundaries with SPA fallback for browser routes.
+- Added proportional type checking, linting, formatting, and scaffold boundary tests.
+
 ### Known blockers
 
 - External code merges remain blocked until auditable CLA acceptance is operational.
 - Garmin unofficial-provider terms require evidence before stable commercial reliance proceeds.
-- No distributable application or installation procedure exists.
+- No end-user product installation or deployment procedure exists.

@@ -10,11 +10,21 @@ Vuexy is therefore not incorporated and is excluded from Project source. Do not 
 
 ## Vue
 
-Vue is selected for the Admin Web. Record the authoritative license, version, source, notices, and lockfile provenance for the actual package incorporated during scaffolding. No dependency metadata or license text is claimed before installation.
+Vue 3.5.41 is incorporated from the npm package `vue` under the MIT License. Its resolved provenance is recorded in `pnpm-lock.yaml`.
 
 ## Vuetify
 
-Vuetify is selected as the Admin Web UI framework. Record the authoritative license, version, source, notices, and lockfile provenance for the actual package incorporated during scaffolding. Do not copy dependency license text before a version is installed and verified.
+Vuetify 4.1.9 is incorporated from the npm package `vuetify` under the MIT License. Its resolved provenance is recorded in `pnpm-lock.yaml`. The project uses the package directly and does not incorporate Vuexy source or assets.
+
+## Scaffold Dependency Provenance
+
+The direct scaffold dependencies were installed from the npm registry and are locked in `pnpm-lock.yaml`. Package metadata reports:
+
+- Vue Router 4.6.4, Vite 8.2.1, the Cloudflare Vite plugin 1.52.1, Wrangler 4.123.0, the Vue Vite plugin 6.0.8, vite-plugin-vuetify 2.1.3, Vitest 4.1.10, ESLint and its selected plugins, Prettier 3.9.6, Happy DOM 20.11.2, and pnpm 11.22.0 under MIT terms;
+- TypeScript 6.0.3 under Apache-2.0;
+- Cloudflare Workers types 5.20260814.1 under MIT or Apache-2.0 terms.
+
+This inventory records package provenance; the packages' own license files and metadata remain authoritative. Recheck licenses and notices when dependency versions change.
 
 ## Garmin
 

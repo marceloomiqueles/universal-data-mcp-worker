@@ -12,7 +12,9 @@ The project prioritizes elementary self-hosting and near-zero cost for reasonabl
 
 Use one Cloudflare Worker/deployment to serve Admin Web, Admin HTTP/JSON API, MCP runtime, core and compiled integrations, and D1 access where appropriate.
 
-Admin Web is a Vue 3, TypeScript, and Vuexy SPA. It consumes Admin API and never accesses D1 or providers directly. The initial access model has one owner/admin with simple authentication and session handling.
+Admin Web is a Vue 3 and TypeScript SPA. It consumes Admin API and never accesses D1 or providers directly. The initial access model has one owner/admin with simple authentication and session handling.
+
+ADR-0007 supersedes the original Vuexy UI-foundation choice recorded when this ADR was accepted: the current UI foundation is Vuetify, and Vuexy source and assets are excluded. This amendment does not change the single-deployment or Admin API decisions in this ADR.
 
 ## Alternatives Considered
 

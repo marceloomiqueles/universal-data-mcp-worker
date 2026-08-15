@@ -2,7 +2,7 @@
 
 ## Status
 
-No test framework or commands exist because there is no application. This policy defines priorities, not tooling or coverage thresholds.
+Vitest provides the current scaffold tests. The verified commands and present coverage are documented in [TESTING.md](../../TESTING.md). This policy defines priorities rather than coverage thresholds.
 
 ## Criterion
 
@@ -30,4 +30,4 @@ Priority:
 - Auth/encryption: success, rejection, expiration/failure, and no leaks.
 - Retention: disable without deletion, reactivation, expiration, repeated purge, and confirmed reset.
 
-Document concrete commands in `TESTING.md` once tooling is selected. Do not invent executable instructions before then.
+Keep concrete, verified commands in `TESTING.md`. Do not document executable instructions before they work.
