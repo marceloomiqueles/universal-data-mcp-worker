@@ -1,0 +1,55 @@
+name: Bug report
+description: Report a reproducible problem without sharing sensitive data.
+title: "[Bug]: "
+body:
+  - type: markdown
+    attributes:
+      value: Never include tokens, credentials, cookies, personal data, full Garmin payloads, or unredacted logs. Security vulnerabilities must follow SECURITY.md.
+  - type: input
+    id: version
+    attributes:
+      label: Version or commit
+      description: Release, tag, commit hash, or "not released".
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Relevant Cloudflare, browser, client, and deployment details. Omit secrets and private endpoints.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Provide the smallest sequence using sanitized data.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected result
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual result
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Sanitized diagnostics
+      description: Optional logs/error codes after removing sensitive data and private endpoints.
+      render: text
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Safety check
+      options:
+        - label: I removed credentials, tokens, personal data, full Garmin payloads, and private endpoints.
+          required: true
+        - label: This is not a security vulnerability.
+          required: true

@@ -1,0 +1,221 @@
+# Legal Baseline Audit
+
+> **Subsequent decision (2026-08-15):** ADR-0007 excludes Vuexy from Project source after review of the Project Owner's Regular License. References below to planned or conditionally permitted Vuexy incorporation describe the repository state at audit time and are not current implementation guidance.
+
+- Date: 2026-08-15
+- Repository: `marceloomiqueles/universal-data-mcp-worker`
+- Local revision: `e9e0c16eb22e78fa092e1c65a911da29b4183935`
+- Audit type: read-only review; this report is the only file created
+- Legal caveat: this is a repository evidence audit, not legal advice
+
+## 1. Scope and Method
+
+This audit independently tests the repository's implemented legal, licensing, contribution, trademark, commercial, security-reporting, chain-of-title, and third-party intellectual-property baseline against the requested FSL 1.1 / Apache-2.0 Future License model. Documentation claims were treated as claims, not as proof of technical enforcement.
+
+The review covered the complete committed tree at the revision above, all three commits reachable from `main`, commit author metadata, file-level history, repository-authored license terminology and identity searches, the absence or presence of dependency manifests and source/assets, and the local GitHub configuration files. The official FSL 1.1 ALv2 template at `https://fsl.software/FSL-1.1-ALv2.template.md` (served from the FSL steward's `getsentry/fsl.software` repository) was used for a textual comparison. The public `github/gitignore` Node template and its CC0 license, and the Contributor Covenant 2.1 source text, were also compared with committed material.
+
+GitHub CLI authentication was invalid and GitHub API requests were unavailable during this audit. Consequently, current remote pull requests, Private Vulnerability Reporting, rulesets/branch protection, bypass permissions, required checks, and auto-merge settings were not technically verified. Earlier audit claims are recorded below as `DOCUMENTED`, not elevated to current technical evidence.
+
+## 2. Sources Inspected
+
+- `AGENTS.md`, read completely, including the legal/IP instructions at lines 625-635.
+- `docs/adr/ADR-0006-public-licensing-and-contribution-rights-model.md`.
+- All files in `docs/legal/`.
+- Relevant gaps: `GAP-005`, `GAP-006`, and `GAP-008` through `GAP-013`; the gaps index was also searched.
+- `README.md`, `CONTRIBUTING.md`, `SECURITY.md`, `LICENSE`, `CONTRIBUTOR_LICENSE_AGREEMENT.md`, `COMMERCIAL.md`, and `TRADEMARKS.md`.
+- The complete `.github/` tree: four issue-template files and the pull-request template.
+- All committed files, including `.gitignore`, `CODE_OF_CONDUCT.md`, prior audits, architecture documents, policies, and documentation.
+- All reachable Git history: commits `73bf0226`, `1e76136d`, and `e9e0c16e`; `git shortlog`, per-commit file changes, and the full `HEAD` tree.
+- Searches for license terminology, third-party references, old repository names, dependencies, code, images, fonts, templates, generated files, and vendored material.
+
+## 3. Executive Conclusion
+
+The intended documentary legal baseline is substantially implemented. `LICENSE` is the canonical FSL-1.1-ALv2 variant with only the permitted year/licensor substitution and no appended restriction. The repository consistently calls protected versions source-available rather than OSI Open Source. The individual CLA preserves contributor ownership and expressly grants the required copyright, relicensing, patent, moral-rights, and contributor-authority rights without copyright assignment.
+
+The external-contribution gate is not operational. No durable CLA acceptance system or acceptance records exist, and current GitHub technical enforcement could not be verified. The repository documents this honestly and declares external code merges blocked. Therefore external code merges must remain blocked.
+
+The committed tree contains no application code, dependencies, Vuexy source/assets, Garmin provider, fonts, icons, images, or other product assets. Two known third-party text/template sources are present: the Contributor Covenant-derived Code of Conduct, with upstream/version attribution, and the GitHub Node `.gitignore` template, which upstream dedicates under CC0. These do not create an identified incompatibility, but the repository's third-party inventory does not record them.
+
+No P0 publication/rights blocker was identified. Owner-attributed architectural and documentation work may continue. A stable/commercial product release is not legally ready because the actual Garmin provider and applicable Garmin service/API terms remain unresolved, and the planned Vuexy material cannot be publicly distributed unless authoritative redistribution rights are established before it is incorporated.
+
+## 4. Audit Matrix
+
+| Requirement | Status | Evidence | Risk | Required action |
+| ----------- | ------ | -------- | ---- | --------------- |
+| Canonical FSL 1.1 with Apache-2.0 Future License | PASS | `LICENSE:1-105` matches the official `FSL-1.1-ALv2.template.md` wording, apart from substituting `Copyright 2026 Marcelo Miqueles` at line 9 and immaterial blank-line formatting. | None identified. | None. |
+| No custom FSL restrictions | PASS | `LICENSE` ends at line 105 and contains no additional-use grant, rider, or appended restriction. | None identified. | None. |
+| Protected versions not described as OSI Open Source | PASS | `README.md:89`, `CONTRIBUTING.md:7`, `AGENTS.md:626`, `ADR-0006:16,38`, and `GAP-006:10` expressly say source-available/not OSI Open Source. Historical alternatives are labeled historical in `docs/legal/license-options.md:3-7,23-25`. | None identified. | None. |
+| Contributors retain copyright; no assignment | PASS | CLA sections 2 and 3, especially `CONTRIBUTOR_LICENSE_AGREEMENT.md:15,21`; `CONTRIBUTING.md:9`. | None identified. | None. |
+| Required non-exclusive copyright grant | PASS | CLA line 19 grants perpetual, worldwide, non-exclusive, royalty-free, irrevocable rights to reproduce, prepare derivatives, modify, adapt, display/perform, distribute, sublicense, and incorporate. | None identified. | None. |
+| Explicit public/future/open/source-available/commercial/proprietary/dual/multi relicensing | PASS | CLA line 21 enumerates every requested licensing mode; this is not inferred only from generic sublicensing language. | None identified. | None. |
+| Apache-style contribution-limited patent grant | PASS | CLA lines 25-31 limit the grant to licensable claims necessarily infringed by the contribution alone or its submitted combination and expressly exclude unrelated claims. | None identified. | None. |
+| International moral-rights treatment | PASS | CLA lines 33-35 provide waiver only to the legally permitted extent, non-assertion where needed, and preserve inalienable rights. | None identified. | None. |
+| Contributor authority and third-party disclosure | PASS | CLA lines 37-47 require entitlement, originality or documented rights, employer authorization, third-party identification, and no knowingly unauthorized material. | None identified. | None. |
+| CLA version and non-retroactivity | PASS | CLA lines 3 and 53-63 identify version 1.0, require acceptance of that version, and say later versions are not retroactive without acceptance. | None identified. | None. |
+| Auditable CLA acceptance | FAIL | CLA lines 53-57, `CONTRIBUTING.md:11-13`, and `GAP-013:8-22` state that no operational system records identity, version, timestamp, and GitHub identity. No acceptance records or CLA bot/workflow are committed. | P1: no enforceable chain-of-title gate for external contributions. | Select, configure, test, and retain/export records from a durable CLA acceptance service or equivalent before any external code merge. |
+| External PR cannot merge without CLA | NOT VERIFIED | `.github/pull_request_template.md:19-21` documents the block but is not enforcement. Remote rulesets/branch settings were inaccessible. `GAP-013` states enforcement is not operational. | P1: a maintainer could potentially merge external code without the required grant. | Owner must confirm current settings; then bind a verified CLA status to the merge gate and test an external PR end to end. |
+| Default-branch PR requirement/direct-push control | NOT VERIFIED | Prior audit `docs/audits/2026-08-15-legal-and-contribution-provenance-audit.md:29` says `main` was protected, administrators included, force push/deletion disabled, and zero approvals/checks; current API evidence was unavailable. | P1 only insofar as external code could enter without the rights policy; current state may have changed. | Repository owner must export or inspect current ruleset/branch-protection evidence, including bypass actors and administrator behavior. |
+| Required checks, bypass, auto-merge, maintainer bypass | NOT VERIFIED | No workflow/check files are committed. Remote settings were inaccessible. The earlier audit reports no required checks but does not cover every current bypass/auto-merge setting. | P1 contribution-gate uncertainty. | Verify current GitHub configuration and require the future CLA check; do not invent unrelated controls. |
+| Git history contributor inventory | PASS | `git shortlog -sne --all` shows three commits, all attributed to `Marcelo Miqueles <marcelomiqueles@hotmail.com>`; hashes and dates are recorded in section 5. No merge commits exist. | Commit metadata is attribution, not conclusive ownership proof. | Preserve provenance evidence and review again before accepting external code. |
+| Historical CLA coverage not assumed | PASS | Prior audit line 21 and CLA line 63 expressly reject retroactivity without acceptance. No historical contribution is represented as CLA-covered. | None identified. | None. |
+| Copyright holder explicitly identified | PARTIAL | `LICENSE:9`, `ADR-0006:15`, `GAP-006:8`, and CLA line 5 identify Marcelo Miqueles; all commit metadata uses the same name. `GAP-012:10-20` correctly states that metadata/declarations do not prove employer or predecessor rights for every fragment. | P3 provenance confirmation remains owner-dependent. | Maintainer should retain a durable confirmation of owner/employer/predecessor rights; no company ownership should be inferred. |
+| Commercial documentation | PASS | `COMMERCIAL.md:3-11` accurately describes FSL, optional installation/support/hosting/commercial licensing, disclaims exclusive consulting rights, and says `LICENSE` controls. | None identified. | None. |
+| Trademark separation and truthful reference | PASS | `TRADEMARKS.md:3-9` separates software and trademark rights, permits accurate descriptive references, prohibits false official status/endorsement, and disclaims ownership of third-party marks. | None identified. | None. |
+| Named third-party marks covered | PASS | `TRADEMARKS.md:7` expressly lists Garmin, Garmin Connect, Polar, Zwift, OpenAI, ChatGPT, Cloudflare, and Vuexy and covers all other third-party names/marks/logos. | None identified. | None. |
+| No unsupported affiliation/endorsement claim | PASS | `README.md:97-99` calls the project independent and expressly disclaims affiliation, endorsement, and sponsorship. Other references describe intended compatibility/dependencies. | None identified. | None. |
+| Dependency manifests and installed dependency licensing | NOT APPLICABLE | Complete-tree search found no `package.json`, lockfile, Deno manifest, Wrangler manifest, or application dependency set; `README.md:11,56` confirms the documentation-only phase. | None at current revision. | Re-audit when dependencies are introduced. |
+| Committed source/assets/fonts/icons/images | NOT APPLICABLE | Full tree and extension searches found no `.ts`, `.js`, `.vue`, stylesheets, images, fonts, binaries, or vendored/generated application material. | None at current revision. | Re-audit when material is added. |
+| Vuexy redistribution | PASS | No Vuexy source or protected asset is committed. `docs/legal/third-party-licensing.md:5-9`, `GAP-008:3-16`, and `AGENTS.md:632` prohibit incorporation pending authoritative rights. | Future P0 release blocker if Vuexy material is committed without redistribution rights; currently no incorporated-material blocker. | Obtain and record authoritative redistribution permission before committing any Vuexy protected material, or use material with established compatible rights. |
+| Garmin provider software license | NOT APPLICABLE | No provider package, repository, dependency, vendored code, authentication mechanism, or provider implementation exists. `GAP-009:12` says none is implemented. | No current software-license conflict. | Identify and license-review the actual provider before incorporation. |
+| Garmin service/API terms and unofficial status | NOT VERIFIED | `docs/legal/third-party-licensing.md:11-15` and `GAP-009:6-16` separate software licensing from Garmin contractual/service terms and avoid claiming an official integration. No authoritative terms or provider are recorded. | P2 before stable/commercial reliance on the Garmin integration. | Once a provider/access method is selected, separately review authoritative Garmin service/API/data-use terms and document unofficial status and limitations. |
+| Known third-party template/text provenance | PARTIAL | `.gitignore:1-143` matches the public `github/gitignore` Node template; upstream applies CC0. `CODE_OF_CONDUCT.md:1-77` is an adapted Contributor Covenant 2.1 and includes upstream/version attribution at lines 73-77. `docs/legal/third-party-licensing.md` records neither item. | P3 inventory gap; no incompatible redistribution right identified. | Record both sources and licenses in the third-party inventory; preserve the Code of Conduct attribution. |
+| Security sensitive-data warning | PASS | `SECURITY.md:13-15` explicitly covers passwords, Garmin/provider credentials, API credentials, access/refresh tokens, encryption keys, Cloudflare secrets, personal data, sports/health data, private database dumps, sensitive provider payloads, cookies, endpoints, and logs. | None identified. | None. |
+| Real private vulnerability channel | NOT VERIFIED | `SECURITY.md:17-21` and closed `GAP-005:6-12` claim GitHub Private Vulnerability Reporting is enabled at the canonical URL. Current remote setting could not be inspected. No invented email is supplied. | P2 if the claimed private channel is not actually enabled. | Repository owner must confirm the current PVR setting and test that the reporting URL is available to an unauthenticated or ordinary GitHub user as appropriate. |
+| Repository license terminology consistency | PASS | Exhaustive case-insensitive search found current FSL/source-available language consistent. MIT/MPL/AGPL mentions occur only in clearly marked historical comparison material; “non-commercial” appears only inside canonical FSL examples. | None identified. | None. |
+| Repository identity consistency | PASS | Current repository-authored documents use `universal-data-mcp-worker`; remote URL is `marceloomiqueles/universal-data-mcp-worker`. No current-tree `garmin-mcp-worker` or `sport-data-mcp-worker` occurrence was found. The initial commit historically used `garmin-mcp-worker`, which is legitimate immutable history. | Local checkout directory is stale but is not committed repository identity. | No committed correction required; optionally rename the local checkout outside this audit. |
+| `AGENTS.md` legal/IP compliance | PASS | `AGENTS.md:15-27` establishes English; lines 625-635 cover FSL/source-available terminology, owner approval, CLA/auditable acceptance, contributor retention/relicensing, external-merge block, provenance, Vuexy, provider/service separation, and trademark use. | None identified. | None. |
+| Unauthorized external-code prohibition | PASS | `AGENTS.md:628-633`, `CONTRIBUTING.md:11`, CLA line 57, and `GAP-013:22` prohibit merge, copying, or trivial rewriting to bypass the gate. | Process depends on maintainer compliance until technical enforcement exists. | Keep external merges blocked until the P1 gate is operational. |
+| Document hierarchy | PASS | `docs/legal/README.md:3-15` identifies `LICENSE` as controlling and separates contribution, commercial, trademark, third-party, and security concerns. `COMMERCIAL.md:11` disclaims operative effect. ADRs/gaps describe decisions and uncertainty rather than silently adding license restrictions. | The CLA becomes operative only upon documented acceptance, as its section 8 states. | None. |
+
+## 5. Chain of Title
+
+### 5.1 History inspected
+
+| Commit | Author | Author email | Authored date | Classification |
+|---|---|---|---|---|
+| `73bf022620d3f5880eea7636c3a9f2a07829cd39` | Marcelo Miqueles | `marcelomiqueles@hotmail.com` | 2026-08-15 14:32:29 -04:00 | A, subject to the owner-provenance caveat |
+| `1e76136ddeb11522bc942b1a276cd76d13734ccd` | Marcelo Miqueles | `marcelomiqueles@hotmail.com` | 2026-08-15 16:07:44 -04:00 | A, subject to the owner-provenance caveat |
+| `e9e0c16eb22e78fa092e1c65a911da29b4183935` | Marcelo Miqueles | `marcelomiqueles@hotmail.com` | 2026-08-15 17:29:22 -04:00 | A plus the two category-C items below |
+
+No distinct external commit author, merge commit, vendored source directory, application source, binary, or generated source was found. Remote PR authorship could not be queried, so the absence of external pull requests is not independently verified. No commit is classified B because no external contribution or CLA acceptance record exists.
+
+### 5.2 Classification
+
+- **A — Project-owner authored:** all repository-specific architecture, legal-policy, governance, and audit text is attributed in Git history to Marcelo Miqueles. The license and ADR explicitly identify him as initial Licensor/copyright holder. This is evidence, not conclusive proof of employer, predecessor, or embedded-fragment ownership; `GAP-012` properly retains that caveat.
+- **B — External contribution with documented CLA:** none identified.
+- **C — Third-party licensed material:** `.gitignore` is materially identical to GitHub's Node template, distributed upstream under CC0 1.0. `CODE_OF_CONDUCT.md` is an adapted Contributor Covenant 2.1 and retains the canonical upstream/version attribution. These are not external project contributions requiring this repository's CLA.
+- **D — Unclear provenance:** no substantial incorporated application code or asset with unclear provenance was found. The inventory omission for the two category-C files is a documentation/process gap rather than an identified rights blocker.
+
+The CLA adopted in commit `e9e0c16e` cannot and does not apply retroactively without evidenced acceptance (`CONTRIBUTOR_LICENSE_AGREEMENT.md:53-63`).
+
+## 6. Third-Party Licensing Findings
+
+### 6.1 Current committed material
+
+| Component | Provenance | License/right | Redistributed? | Compatibility/notices |
+|---|---|---|---|---|
+| GitHub Node `.gitignore` template | `github/gitignore`, `Node.gitignore` | CC0 1.0 Universal in upstream repository | Yes, substantially identical template | CC0 permits redistribution without attribution. Recording provenance would improve the audit trail. |
+| Contributor Covenant Code of Conduct 2.1 | Contributor Covenant 2.1; expressly named at `CODE_OF_CONDUCT.md:73-75` | Upstream-adapted policy text; the canonical adoption text supplies the same attribution | Yes, adapted | Upstream/version/source attribution is present and modifications are apparent in the enforcement section. Preserve it and record the content license/provenance in the third-party inventory. |
+| Mozilla enforcement ladder influence | Linked at `CODE_OF_CONDUCT.md:77` | Inspiration is acknowledged; no separately copied Mozilla file was identified | No separately identifiable redistributed file | No additional notice requirement established from repository evidence. |
+
+The root FSL license cannot erase third-party rights. The current third-party inventory states that principle at `docs/legal/third-party-licensing.md:3`, but it is incomplete because it covers only planned Vuexy, Garmin, and future integrations.
+
+### 6.2 Vuexy
+
+No Vuexy source, theme, component, image, icon, font, style, script, or protected asset is committed. Repository evidence does not establish public redistribution rights. `GAP-008` correctly blocks committing such material. Therefore there is no current Vuexy publication blocker, but any future public incorporation without authoritative redistribution rights would be a P0 release/publication blocker.
+
+### 6.3 Garmin/provider
+
+No actual Garmin provider has been selected or incorporated, so package/repository, license, vendoring/dependency mode, authentication mechanism, and provider limitations are not yet determinable. Repository documents consistently describe a possible provider as unofficial and temporary and do not claim an official Garmin relationship. Software-license compatibility and Garmin service/API contractual terms remain correctly separated. `GAP-009` is an actual P2 blocker to stable/commercial reliance on the future Garmin integration, not a current FSL publication conflict.
+
+## 7. CLA and Enforcement
+
+The CLA's substantive grant passes the requested baseline. It is an individual agreement with version/date, no assignment, explicit copyright and relicensing rights, a narrowly scoped Apache-style patent license, internationally sensitive moral-rights language, and authority/provenance representations.
+
+Acceptance is not implemented. There is no committed CLA service configuration, status-check workflow, acceptance ledger, identity mapping, timestamp, or versioned acceptance record. The PR template expressly says its checkbox is not acceptance. This honesty prevents a false claim of readiness but does not provide enforcement.
+
+Accordingly:
+
+- `DOCUMENTED`: external code merges are blocked (`CONTRIBUTING.md:11-13`, `GAP-013:22`, PR template line 21).
+- `TECHNICALLY ENFORCED`: **NOT VERIFIED and not established by committed configuration**.
+- External PR merge safety: **blocked by policy, not proven by platform control**.
+
+## 8. GitHub Protection and Security Reporting
+
+The canonical remote is `https://github.com/marceloomiqueles/universal-data-mcp-worker.git`, and local `main` points at the audited revision. The earlier legal/provenance audit reports that `main` had PR protection, stale-review dismissal, conversation resolution, administrator inclusion, disabled force pushes/deletion, zero approvals, and no required checks. It also reports Private Vulnerability Reporting enabled.
+
+Those statements are historical documentation only. During this audit, `gh auth status` reported an invalid token, and live GitHub API requests could not be completed. No committed file can prove server-side settings. Therefore direct pushes, current PR requirements, bypass actors, administrator bypass, auto-merge, required checks, CLA gate, and current Private Vulnerability Reporting are all `NOT VERIFIED` and require repository-owner confirmation.
+
+The security document itself passes the sensitive-data checklist and does not invent an email address. Its assertion that PVR is “verified” must remain contingent on the remote setting actually remaining enabled.
+
+## 9. Documentation Consistency
+
+### 9.1 License and commercial terminology
+
+Current documents consistently use `FSL-1.1-ALv2`, `source-available`, or `public-source`. They do not market protected versions as OSI Open Source. References to Apache, MIT, MPL, and AGPL are either the actual Future License or a clearly labeled historical comparison. No repository-authored text states a separate “commercial use prohibited” or adds a non-commercial restriction beyond canonical FSL examples.
+
+`COMMERCIAL.md` is informational, accurately preserves permitted public-license uses, permits independent compliant consulting, and makes `LICENSE` controlling. `TRADEMARKS.md` properly separates branding rights and handles all specifically requested third-party marks.
+
+### 9.2 Identity
+
+The current committed tree consistently uses `universal-data-mcp-worker`. Neither `garmin-mcp-worker` nor `sport-data-mcp-worker` occurs in current repository-authored content. The old `garmin-mcp-worker` name exists only in the immutable initial commit and the local checkout directory path; neither requires a repository-content correction.
+
+### 9.3 Agent instructions
+
+`AGENTS.md` accurately encodes the legal baseline and does not contradict the operative license or CLA. It is stronger than ordinary documentation in one useful respect: it explicitly forbids incorporating Vuexy without redistribution evidence and forbids copying or trivially rewriting unaccepted external PR code.
+
+### 9.4 Hierarchy
+
+- **Legally operative:** `LICENSE`; an accepted `CONTRIBUTOR_LICENSE_AGREEMENT.md` version 1.0 for each contributor who actually completes the required acceptance process. At present, no external accepted CLA is evidenced.
+- **Repository policy:** `CONTRIBUTING.md`, `SECURITY.md`, and `TRADEMARKS.md`.
+- **Informational:** `COMMERCIAL.md`, `docs/legal/*`, ADRs, gaps, and audits.
+
+No informational file was found to add a restriction inconsistent with the operative FSL text. The principal hierarchy weakness is operational, not textual: there is no accepted-CLA evidence or technical gate.
+
+## 10. Prioritized Remediation
+
+No remediation was performed in this read-only audit.
+
+### P0 — Publication/rights blocker
+
+None identified at the audited revision.
+
+### P1 — External contribution blocker
+
+1. Implement durable, auditable CLA acceptance recording contributor identity, CLA version, acceptance timestamp, and GitHub/equivalent identity.
+2. Connect the verified CLA status to the merge gate and test it with an external PR.
+3. Verify and preserve current default-branch protection/ruleset evidence, including direct push and bypass behavior. Until then, continue the documented external-merge block.
+
+### P2 — Must fix before stable/commercial release
+
+1. Select the actual Garmin provider/access method; review and document its software license, provenance, unofficial status, authentication behavior, limitations, and applicable authoritative Garmin service/API/data-use terms before stable commercial reliance.
+2. Establish authoritative public redistribution rights for any Vuexy material before incorporating it into a public stable/commercial distribution. If those rights cannot be established, do not incorporate that material.
+3. Confirm that GitHub Private Vulnerability Reporting remains enabled and that the published private-reporting URL works before relying on it for a stable public release.
+
+### P3 — Documentation/process improvement
+
+1. Add `.gitignore`/GitHub CC0 provenance and Contributor Covenant provenance/license details to the third-party inventory when changes are authorized.
+2. Retain maintainer evidence addressing employer, predecessor, and historical embedded-fragment rights tracked by `GAP-012`.
+3. Preserve per-version first-availability dates so each FSL Future License transition can be audited, as already tracked in `GAP-007`.
+
+## 11. Go/No-Go Conclusions
+
+### PUBLIC REPOSITORY
+
+**SAFE TO KEEP PUBLIC**
+
+No incompatible, unclear substantial code, Vuexy material, Garmin provider, or materially incorrect license was found. The two identified third-party template/text items have known permissive/adoption provenance and do not establish a publication blocker.
+
+### PROJECT-OWNER DEVELOPMENT
+
+**SAFE TO CONTINUE**
+
+Work authored by the identified Project Owner may continue, as may third-party material with documented compatible rights. Vuexy material must remain excluded pending redistribution evidence, and a future Garmin provider must be separately reviewed.
+
+### EXTERNAL CODE MERGES
+
+**BLOCKED**
+
+The repository has no operational auditable CLA acceptance mechanism or acceptance records, and technical GitHub enforcement was not verified. External code must not be merged, copied, or trivially rewritten until identity, CLA version, acceptance time, and contributor identity are durably recorded and enforced.
+
+### COMMERCIAL/STABLE RELEASE
+
+**NOT READY**
+
+Actual legal blockers for the intended product release are:
+
+1. no selected Garmin provider and no review of its license/provenance or applicable Garmin service/API terms;
+2. no established public redistribution rights for planned Vuexy material, if that material is to be included;
+3. the claimed private vulnerability reporting mechanism was not independently verified as currently operational.
+
+The P1 CLA issue blocks external code merges, but does not by itself block a release composed solely of verified Project-owner work and compatibly licensed third-party material.

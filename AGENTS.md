@@ -42,7 +42,7 @@ Initial stack:
 - Cloudflare Workers
 - Cloudflare D1
 - standard MCP
-- Admin Web: Vue 3 + TypeScript + Vuexy
+- Admin Web: Vue 3 + TypeScript + Vuetify + Vue Router
 - OpenAI ChatGPT as the first supported and validated client
 
 Operational goals:
@@ -110,7 +110,7 @@ Do not implement dynamic discovery, a plugin marketplace, remote code installati
 ```text
 Cloudflare Worker / Deployment
 │
-├── Admin Web (Vue 3 + TypeScript + Vuexy)
+├── Admin Web (Vue 3 + TypeScript + Vuetify + Vue Router)
 │   └── Admin API HTTP/JSON
 ├── MCP runtime
 │   ├── Garmin capabilities
@@ -451,10 +451,16 @@ The project includes a self-hosted administrative interface:
 
 - Vue 3;
 - TypeScript;
-- Vuexy;
+- Vuetify;
+- Vue Router;
 - SPA;
-- natural routing/tooling for the selected Vuexy variant;
 - no SSR unless a real need is demonstrated.
+
+Use ordinary Vue composition and local state first. Pinia is not part of the initial scaffold unless an actual client-side state requirement justifies it.
+
+Use Vuetify primitives before creating custom equivalents. Keep project-owned theme customization small. Do not build a custom design system or add Tailwind CSS, Bootstrap, or another CSS/component framework.
+
+Vuexy was evaluated but is not a source dependency. Its Regular License does not provide sufficient rights for redistribution in this public source-available repository. Do not copy, selectively incorporate, vendor, adapt, or relicense Vuexy source, layouts, `@core`, SCSS, components, icons, assets, or generated code.
 
 The UI never accesses D1 or providers directly. It consumes an Admin HTTP/JSON API served by the same Worker.
 
@@ -607,6 +613,10 @@ Conceptual routes:
 
 Exact paths may change. Do not add SSR or a separate backend without demonstrated need.
 
+The approved scaffold baseline is one repository, one deployable application, one root `package.json`, one pnpm lockfile, no workspaces, and no monorepo package boundaries. Use Vite with the official Cloudflare Vite integration so the same Worker deployment serves SPA assets, Admin API, and MCP.
+
+The conceptual source shape is `src/worker`, `src/core`, `src/integrations/garmin`, and `src/admin`. Create only directories with an immediate consumer; do not materialize empty architecture.
+
 ## Dependencies
 
 Before building infrastructure, find a standard solution compatible with TypeScript, Cloudflare Workers, the free tier, reasonable bundle size, active maintenance, security, and simplicity.
@@ -629,7 +639,7 @@ Prefer small, mature libraries. Do not add a dependency for a few trivial lines.
 - Contributors retain copyright; the CLA grants Marcelo Miqueles explicit sublicensing, relicensing, proprietary-licensing, and dual- or multi-licensing rights without copyright assignment.
 - Until CLA acceptance enforcement is operational, external code may be discussed and reviewed but must not be merged, copied, or trivially rewritten into the Project.
 - Incorporate third-party code or assets only under compatible terms with documented provenance and redistribution rights.
-- Vuexy source and protected assets must not be committed until public redistribution rights are verified.
+- Vuexy source and protected assets are excluded from the Project and must not be copied, selectively incorporated, vendored, adapted, or relicensed.
 - Garmin/provider licenses and service terms are independent of the Project software license and require separate review.
 - Use third-party trademarks only for truthful descriptive reference; never imply endorsement, partnership, or official status.
 
