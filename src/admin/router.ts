@@ -10,6 +10,7 @@ import LoadingView from './views/LoadingView.vue'
 import LoginView from './views/LoginView.vue'
 import NotFoundView from './views/NotFoundView.vue'
 import StatusView from './views/StatusView.vue'
+import { adminSession, type AdminSession } from './session'
 
 export const routes: RouteRecordRaw[] = [
   { path: '/', name: 'home', component: HomeView },
@@ -19,8 +20,38 @@ export const routes: RouteRecordRaw[] = [
   { path: '/:pathMatch(.*)*', name: 'not-found', component: NotFoundView },
 ]
 
-export function createAdminRouter(history: RouterHistory = createWebHistory()) {
-  return createRouter({ history, routes })
+function safeRedirect(value: unknown): string {
+  return typeof value === 'string' &&
+    value.startsWith('/') &&
+    !value.startsWith('//')
+    ? value
+    : '/'
+}
+
+export function createAdminRouter(
+  history: RouterHistory = createWebHistory(),
+  session: AdminSession = adminSession,
+) {
+  const router = createRouter({ history, routes })
+
+  router.beforeEach(async (to) => {
+    await session.initialize()
+
+    if (session.state.status === 'authenticated') {
+      if (to.name === 'login' || to.name === 'loading') {
+        return safeRedirect(to.query.redirect)
+      }
+      return true
+    }
+
+    if (to.name !== 'login') {
+      return { name: 'login', query: { redirect: to.fullPath } }
+    }
+
+    return true
+  })
+
+  return router
 }
 
 export const router = createAdminRouter()

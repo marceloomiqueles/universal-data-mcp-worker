@@ -8,7 +8,7 @@ Garmin Connect → Cloudflare Worker → D1 where appropriate → MCP → ChatGP
 
 ## Current Status
 
-The project has an initial deployable scaffold and the first backend product slice. One Cloudflare Worker serves the Vue/Vuetify Admin SPA, a D1-backed single-owner Admin authentication API, and the reserved MCP boundary. Owner setup, login, server-managed sessions, logout, and default Admin API protection are validated locally. The Admin login UI, Garmin integration, and MCP protocol behavior are not implemented yet.
+The project has an initial deployable scaffold and its first product slice. One Cloudflare Worker serves the Vue/Vuetify Admin SPA, a D1-backed single-owner Admin authentication API, and the reserved MCP boundary. First-run owner setup, login, server-managed session restoration, logout, and default Admin API protection are implemented and validated locally. Garmin integration and MCP protocol behavior are not implemented yet.
 
 The current foundation proves the single-deployment build and routing model without prematurely inventing product contracts.
 
@@ -81,9 +81,9 @@ Open the matching local setup URL:
 http://localhost:5173/login#bootstrap=replace-with-the-same-random-value
 ```
 
-The URL fragment is not sent to the Worker while loading the SPA. The upcoming Session UI will remove it immediately, keep the proof only in memory, and submit it separately from the username/password form. The backend accepts the proof only while no owner exists. Remove it from `.dev.vars` after successful setup. Do not commit or reuse the example value.
+The URL fragment is not sent to the Worker while loading the SPA. The SPA removes it immediately, keeps the proof only in memory, and submits it separately from the username/password form. Choose the owner username and a password of at least 12 characters, confirm the password, and select **Create account**. The browser receives an `HttpOnly` session cookie and opens the authenticated Admin shell. The backend accepts the proof only while no owner exists. Remove it from `.dev.vars` after successful setup. Do not commit or reuse the example value.
 
-The current SPA still has a visual login placeholder, so the authorized link capture is not implemented yet. Backend-only API validation supplies the same proof through `X-Owner-Bootstrap-Proof`; see [TESTING.md](TESTING.md).
+After setup, open the Admin Web normally and sign in with the owner username and password. Use **Sign out** in the application bar to invalidate the current session. See [TESTING.md](TESTING.md) for the validated API and UI behavior.
 
 There is no end-user deployment guide because production deployment and the complete product flow have not been validated. A real Cloudflare deployment must replace the placeholder D1 identifier, apply migrations, generate one proof, configure it as the `OWNER_SETUP_TOKEN` Cloudflare secret, and provide the owner with `https://<deployment>/login#bootstrap=<proof>`. Do not put the proof in a query string or ordinary Wrangler variable. Automated generation of this link remains a deployment gap.
 

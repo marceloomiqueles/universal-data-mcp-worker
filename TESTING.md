@@ -34,7 +34,7 @@ Build and preview the production output under the local Workers runtime with:
 pnpm preview
 ```
 
-The Admin tests use the production Vue Router definitions and verify the scaffold views and responsive navigation. Worker tests apply the real D1 migration and verify first setup, setup authorization, atomic singleton races, password verification, digest-only sessions, cookie attributes, expiration, logout, CSRF origin checks, default `/api/*` protection, unchanged `/mcp/*`, and SPA asset delegation.
+The Admin tests use the production Vue Router and session code. They verify first-run setup, bootstrap-fragment removal and separate proof transport, missing-proof guidance, password confirmation, normal login, generic login failure, session restoration, protected navigation UX, loading without authenticated-content flash, logout, unavailable-API feedback, not-found behavior, and responsive navigation. Worker tests apply the real D1 migration and verify first setup, setup authorization, atomic singleton races, password verification, digest-only sessions, cookie attributes, expiration, logout, CSRF origin checks, default `/api/*` protection, unchanged `/mcp/*`, and SPA asset delegation.
 
 `pnpm typecheck` uses separate Admin-test and Worker-test TypeScript projects. Each project includes its runtime source and related tests without mixing DOM types into Worker code or Worker types into Admin code.
 
@@ -55,7 +55,7 @@ GET  /api/auth/session
 POST /api/auth/logout
 ```
 
-All POST requests require `Content-Type: application/json` and an `Origin` exactly matching the Worker origin. Setup JSON contains only `username` and `password`; password confirmation remains a client responsibility. Authorization is supplied separately through the `X-Owner-Bootstrap-Proof` header. The future SPA obtains that proof from `/login#bootstrap=<proof>`, removes the fragment, and keeps it only in memory. Remove the setup secret after the owner is created. The current UI does not submit these operations yet.
+All POST requests require `Content-Type: application/json` and an `Origin` exactly matching the Worker origin. Setup JSON contains only `username` and `password`; password confirmation remains a client responsibility. Authorization is supplied separately through the `X-Owner-Bootstrap-Proof` header. The SPA obtains that proof from `/login#bootstrap=<proof>`, removes the fragment immediately, keeps it only in memory, and never represents it as account data. Remove the setup secret after the owner is created.
 
 Local preview validation has confirmed setup status, first setup, current session, authenticated Admin API access, logout, post-logout rejection, and unchanged MCP boundary behavior. PBKDF2 login measured approximately 76–88 ms wall time in local workerd. This is not production CPU evidence.
 
