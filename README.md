@@ -8,7 +8,7 @@ Garmin Connect → Cloudflare Worker → D1 where appropriate → MCP → ChatGP
 
 ## Current Status
 
-The project has an initial deployable scaffold: a Vue/Vuetify Admin SPA and one Cloudflare Worker with reserved Admin API and MCP route boundaries. The boundaries are validated locally, but no Garmin integration, authentication, MCP protocol behavior, D1 schema, migration, sync, or other product functionality exists yet.
+The project has an initial deployable scaffold and the first backend product slice. One Cloudflare Worker serves the Vue/Vuetify Admin SPA, a D1-backed single-owner Admin authentication API, and the reserved MCP boundary. Owner setup, login, server-managed sessions, logout, and default Admin API protection are validated locally. The Admin login UI, Garmin integration, and MCP protocol behavior are not implemented yet.
 
 The current foundation proves the single-deployment build and routing model without prematurely inventing product contracts.
 
@@ -65,12 +65,19 @@ Install dependencies and start the local Cloudflare/Vite development environment
 
 ```sh
 pnpm install
+pnpm exec wrangler d1 migrations apply DB --local
 pnpm dev
 ```
 
-The development server exposes the SPA and the Worker route boundaries in one local application. See [TESTING.md](TESTING.md) for verified validation commands.
+Before starting the Worker for owner setup, create an ignored `.dev.vars` file containing a high-entropy, temporary setup code:
 
-There is no end-user installation or deployment guide because product functionality and a real deployment procedure do not exist yet. That future guide must validate the intended flow before documenting it:
+```dotenv
+OWNER_SETUP_TOKEN="replace-with-a-random-value-of-at-least-32-characters"
+```
+
+The backend accepts that code only while no owner exists. Remove it from `.dev.vars` after successful setup. Do not commit the file or reuse the example value. The current SPA still has a visual login placeholder, so exercise the backend through its API until the separate Admin UI stage is implemented. See [TESTING.md](TESTING.md) for the endpoint behavior and verified commands.
+
+There is no end-user deployment guide because production deployment and the complete product flow have not been validated. A real Cloudflare deployment must replace the placeholder D1 identifier, apply migrations, and configure `OWNER_SETUP_TOKEN` as a Cloudflare secret before first-run setup. Do not use ordinary Wrangler variables for that secret.
 
 ```text
 Deploy → Admin Web → connect Garmin → sync → connect MCP → ChatGPT

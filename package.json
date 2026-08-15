@@ -14,7 +14,7 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "test": "vitest run",
+    "test": "vitest run && vitest run --config vitest.worker.config.ts",
     "build": "vite build",
     "preview": "pnpm build && vite preview"
   },
@@ -25,6 +25,7 @@
   },
   "devDependencies": {
     "@cloudflare/vite-plugin": "^1.52.1",
+    "@cloudflare/vitest-pool-workers": "^0.21.3",
     "@cloudflare/workers-types": "5.20260814.1",
     "@eslint/js": "^10.0.1",
     "@vitejs/plugin-vue": "^6.0.8",

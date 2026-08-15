@@ -3,6 +3,14 @@
   "name": "universal-data-mcp-worker",
   "main": "./src/worker/index.ts",
   "compatibility_date": "2026-08-15",
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "universal-data-mcp-worker",
+      "database_id": "00000000-0000-0000-0000-000000000000",
+      "migrations_dir": "migrations",
+    },
+  ],
   "assets": {
     "directory": "./dist/client",
     "binding": "ASSETS",

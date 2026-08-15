@@ -2,7 +2,7 @@
 
 ## Supported versions
 
-There are no released or supported versions yet. The repository currently contains documentation only. This section will be updated when the first release exists.
+There are no released or supported versions yet. The repository contains an unreleased scaffold and an initial Admin authentication backend. This section will be updated when the first release exists.
 
 ## What to report privately
 

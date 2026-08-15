@@ -5,7 +5,7 @@
 
 ## Unknowns
 
-- Concrete libraries for MCP, Worker routing, validation, auth, hashing, and retry.
+- Concrete libraries for MCP and retry.
 - Worker/MCP transport and runtime compatibility under `workerd` and deployed Workers.
 - Whether concurrent sync requires locking/coalescing.
 - D1 migration runner atomicity, duration, and recovery.
@@ -30,6 +30,10 @@ The 2026-08-15 pre-scaffolding audit confirmed that Cloudflare currently support
 The initial scaffold subsequently established and locked mutually compatible versions for Node, pnpm, Vue, Vuetify, Vue Router, Vite, TypeScript, the Cloudflare Vite plugin, Wrangler, and Worker types. Vitest, ESLint, TypeScript-ESLint, eslint-plugin-vue, and Prettier are operational. Local development and built Worker preview both demonstrated that `/` and `/status` use the SPA while `/api/*` and `/mcp/*` reach the Worker first. These results close the version, test-tooling, lint/format-tooling, and basic static-routing portions of this gap; they do not validate MCP protocol behavior or production deployment.
 
 The scaffold-hardening follow-up added regression coverage for exact, nested, trailing-slash, query-string, and near-prefix Worker routes; reused production Vue Router definitions in Admin tests; verified Vuetify responsive navigation behavior; and added separate static typecheck projects for Admin and Worker tests. These findings are resolved without changing the remaining MCP, persistence, sync, provider, or production-deployment gaps.
+
+The owner-session backend selected no runtime auth framework. It uses Workers Web Crypto for PBKDF2-HMAC-SHA-256 password verification, cryptographic random session tokens, and SHA-256 token digests; D1 stores the singleton owner and revocable sessions. The official Cloudflare Workers Vitest integration 0.21.3 applies the real migration and validates the API under workerd. Atomic concurrent setup, expiration, logout, origin checks, default Admin API protection, and unchanged MCP routing are covered.
+
+The 600,000-iteration PBKDF2 operation measured approximately 76–88 ms wall time in the local built Worker preview. Actual production CPU accounting and free-tier compatibility remain unvalidated and must be measured before claiming production readiness. Wrangler migrations were validated on an empty local database and through repeated test application; automatic startup/deploy and integration-activation migration behavior remains open.
 
 ## Constraint While Open
 

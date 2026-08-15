@@ -2,7 +2,7 @@
 
 ## Status
 
-This document records agreed requirements. It does not claim controls are implemented; the repository contains no product yet.
+This document records implemented Admin authentication controls and requirements for future sensitive surfaces. It does not claim that Garmin, MCP authentication, or production deployment security has been implemented or validated.
 
 `universal-data-mcp-worker` is public. Treat history, documentation, examples, fixtures, logs, and screenshots as publicly visible.
 
@@ -10,9 +10,13 @@ This document records agreed requirements. It does not claim controls are implem
 
 The self-hosted deployment has one owner. Do not design multi-user behavior, organizations, RBAC, invitations, email verification/recovery, or enterprise identity.
 
-Admin Web must eventually use a standard Worker-compatible mechanism with an admin credential, secure password hashing, session, `HttpOnly`/`Secure`/appropriate `SameSite` cookie, logout, and credential rotation when implemented.
+The Worker implements one owner with a username and password. First setup requires a temporary high-entropy `OWNER_SETUP_TOKEN` Cloudflare secret and an atomic singleton D1 insert, preventing a public first visitor from claiming the deployment. Setup never overwrites an existing owner.
 
-Select the library, compatible algorithm, and session semantics during technical design based on maintenance and security evidence. Do not invent cryptography.
+Passwords are stored as versioned PBKDF2-HMAC-SHA-256 verifiers with a random 16-byte salt and 600,000 iterations through Workers Web Crypto. Password input is bounded to 12–128 characters and 256 UTF-8 bytes. Plaintext passwords and setup tokens are not persisted.
+
+Sessions use opaque 256-bit random tokens. Only SHA-256 token digests and timestamps are stored in D1. The raw token is returned only in an `HttpOnly`, `SameSite=Strict`, `Path=/api` cookie with a 12-hour absolute lifetime; HTTPS responses also set `Secure`. Logout deletes the session record. Expired sessions are rejected independently of cleanup and expired rows are removed opportunistically during login.
+
+All non-public `/api/*` requests require a valid session. The only unauthenticated operations are setup status, first setup, and login. State-changing authentication requests require JSON and an exact same-origin `Origin` header. Credentialed cross-origin Admin API access is not enabled. `/mcp/*` remains outside Admin-session behavior.
 
 ## Secrets and Sensitive State
 
@@ -44,6 +48,6 @@ Reset/delete requires explicit confirmation. Disablement does not immediately de
 - provider credential revocation behavior;
 - secure behavior when sensitive configuration is missing or invalid.
 
-Add a complete threat model and incident runbooks before exposing a real deployment, based on implemented surfaces.
+Add a complete threat model and incident runbooks before exposing a real deployment, based on implemented surfaces. Actual Cloudflare free-tier CPU behavior for the password work factor remains unvalidated; local workerd measurements are recorded in GAP-004.
 
-GitHub Private Vulnerability Reporting is confirmed disabled and no verified fallback exists. Public policy and the blocker are in [`../../SECURITY.md`](../../SECURITY.md) and [`GAP-005`](../gaps/GAP-005-public-repository-security-reporting.md).
+GitHub Private Vulnerability Reporting is the verified private channel. Public policy and the closed decision are in [`../../SECURITY.md`](../../SECURITY.md) and [`GAP-005`](../gaps/GAP-005-public-repository-security-reporting.md).

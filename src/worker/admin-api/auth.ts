@@ -1,0 +1,380 @@
+import {
+  createPasswordVerifier,
+  createSessionToken,
+  digestSecret,
+  secretsEqual,
+  verifyPassword,
+} from './crypto'
+
+const SESSION_COOKIE = 'admin_session'
+const SESSION_LIFETIME_SECONDS = 12 * 60 * 60
+const USERNAME_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{2,63}$/u
+
+export interface AuthEnv {
+  DB: D1Database
+  OWNER_SETUP_TOKEN?: string
+}
+
+interface OwnerRecord {
+  id: number
+  username: string
+  normalized_username: string
+  password_verifier: string
+}
+
+interface SessionRecord {
+  username: string
+  expires_at: number
+}
+
+interface Credentials {
+  username: string
+  password: string
+}
+
+interface SetupCredentials extends Credentials {
+  setupCode: string
+}
+
+function json(data: unknown, status = 200, headers?: HeadersInit): Response {
+  const responseHeaders = new Headers(headers)
+  responseHeaders.set('cache-control', 'no-store')
+  return Response.json(data, { status, headers: responseHeaders })
+}
+
+function error(code: string, message: string, status: number): Response {
+  return json({ error: { code, message } }, status)
+}
+
+function normalizeUsername(username: string): string {
+  return username.toLowerCase()
+}
+
+function validPassword(password: string): boolean {
+  const byteLength = new TextEncoder().encode(password).byteLength
+  return password.length >= 12 && password.length <= 128 && byteLength <= 256
+}
+
+async function readJson<T>(request: Request): Promise<T | undefined> {
+  if (
+    !request.headers
+      .get('content-type')
+      ?.toLowerCase()
+      .startsWith('application/json')
+  ) {
+    return undefined
+  }
+
+  try {
+    const text = await request.text()
+    if (text.length > 4096) return undefined
+    return JSON.parse(text) as T
+  } catch {
+    return undefined
+  }
+}
+
+function hasCredentials(value: unknown): value is Credentials {
+  if (!value || typeof value !== 'object') return false
+  const candidate = value as Partial<Credentials>
+  return (
+    typeof candidate.username === 'string' &&
+    typeof candidate.password === 'string'
+  )
+}
+
+function hasSetupCredentials(value: unknown): value is SetupCredentials {
+  return (
+    hasCredentials(value) &&
+    typeof (value as Partial<SetupCredentials>).setupCode === 'string'
+  )
+}
+
+function validateOrigin(request: Request): Response | undefined {
+  const origin = request.headers.get('origin')
+  if (origin !== new URL(request.url).origin) {
+    return error('FORBIDDEN_ORIGIN', 'The request origin is not allowed.', 403)
+  }
+
+  return undefined
+}
+
+async function getOwner(db: D1Database): Promise<OwnerRecord | null> {
+  return db
+    .prepare(
+      `SELECT id, username, normalized_username, password_verifier
+       FROM owner_credentials
+       WHERE id = 1`,
+    )
+    .first<OwnerRecord>()
+}
+
+function cookieToken(request: Request): string | undefined {
+  const cookie = request.headers.get('cookie')
+  if (!cookie) return undefined
+
+  for (const part of cookie.split(';')) {
+    const [name, ...value] = part.trim().split('=')
+    if (name === SESSION_COOKIE) return value.join('=') || undefined
+  }
+
+  return undefined
+}
+
+function sessionCookie(token: string, request: Request): string {
+  const attributes = [
+    `${SESSION_COOKIE}=${token}`,
+    'HttpOnly',
+    'SameSite=Strict',
+    'Path=/api',
+    `Max-Age=${SESSION_LIFETIME_SECONDS}`,
+  ]
+  if (new URL(request.url).protocol === 'https:') attributes.push('Secure')
+  return attributes.join('; ')
+}
+
+function expiredSessionCookie(request: Request): string {
+  const attributes = [
+    `${SESSION_COOKIE}=`,
+    'HttpOnly',
+    'SameSite=Strict',
+    'Path=/api',
+    'Max-Age=0',
+  ]
+  if (new URL(request.url).protocol === 'https:') attributes.push('Secure')
+  return attributes.join('; ')
+}
+
+async function createSession(
+  db: D1Database,
+  ownerId: number,
+  now: number,
+): Promise<{
+  token: string
+  expiresAt: number
+  statement: D1PreparedStatement
+}> {
+  const token = createSessionToken()
+  const tokenDigest = await digestSecret(token)
+  const expiresAt = now + SESSION_LIFETIME_SECONDS * 1000
+  const statement = db
+    .prepare(
+      `INSERT INTO admin_sessions (token_digest, owner_id, created_at, expires_at)
+       VALUES (?, ?, ?, ?)`,
+    )
+    .bind(tokenDigest, ownerId, now, expiresAt)
+
+  return { token, expiresAt, statement }
+}
+
+async function validateSession(
+  request: Request,
+  db: D1Database,
+  now: number,
+): Promise<SessionRecord | null> {
+  const token = cookieToken(request)
+  if (!token) return null
+
+  const digest = await digestSecret(token)
+  const session = await db
+    .prepare(
+      `SELECT owner_credentials.username, admin_sessions.expires_at
+       FROM admin_sessions
+       JOIN owner_credentials ON owner_credentials.id = admin_sessions.owner_id
+       WHERE admin_sessions.token_digest = ?`,
+    )
+    .bind(digest)
+    .first<SessionRecord>()
+
+  if (!session || session.expires_at <= now) return null
+  return session
+}
+
+async function setupStatus(env: AuthEnv): Promise<Response> {
+  const owner = await getOwner(env.DB)
+  return json({ setupRequired: owner === null })
+}
+
+async function setupOwner(
+  request: Request,
+  env: AuthEnv,
+  now: number,
+): Promise<Response> {
+  const originError = validateOrigin(request)
+  if (originError) return originError
+
+  if (await getOwner(env.DB)) {
+    return error('ALREADY_CONFIGURED', 'Owner setup is already complete.', 409)
+  }
+
+  const body = await readJson<unknown>(request)
+  if (!hasSetupCredentials(body)) {
+    return error('INVALID_REQUEST', 'Valid setup details are required.', 400)
+  }
+
+  const { username, password, setupCode } = body
+  if (!USERNAME_PATTERN.test(username) || !validPassword(password)) {
+    return error('INVALID_REQUEST', 'Valid setup details are required.', 400)
+  }
+
+  if (
+    !env.OWNER_SETUP_TOKEN ||
+    env.OWNER_SETUP_TOKEN.length < 32 ||
+    setupCode.length > 512 ||
+    !(await secretsEqual(setupCode, env.OWNER_SETUP_TOKEN))
+  ) {
+    return error('SETUP_UNAVAILABLE', 'Owner setup is not authorized.', 403)
+  }
+
+  const passwordVerifier = await createPasswordVerifier(password)
+  const session = await createSession(env.DB, 1, now)
+
+  try {
+    await env.DB.batch([
+      env.DB.prepare(
+        `INSERT INTO owner_credentials
+             (id, username, normalized_username, password_verifier, created_at, credential_updated_at)
+           VALUES (1, ?, ?, ?, ?, ?)`,
+      ).bind(username, normalizeUsername(username), passwordVerifier, now, now),
+      session.statement,
+    ])
+  } catch (cause) {
+    if (await getOwner(env.DB)) {
+      return error(
+        'ALREADY_CONFIGURED',
+        'Owner setup is already complete.',
+        409,
+      )
+    }
+    throw cause
+  }
+
+  return json(
+    {
+      authenticated: true,
+      owner: { username },
+      expiresAt: new Date(session.expiresAt).toISOString(),
+    },
+    201,
+    { 'set-cookie': sessionCookie(session.token, request) },
+  )
+}
+
+async function login(
+  request: Request,
+  env: AuthEnv,
+  now: number,
+): Promise<Response> {
+  const originError = validateOrigin(request)
+  if (originError) return originError
+
+  const body = await readJson<unknown>(request)
+  if (!hasCredentials(body)) {
+    return error('INVALID_CREDENTIALS', 'Invalid username or password.', 401)
+  }
+
+  const owner = await getOwner(env.DB)
+  if (!owner) return error('SETUP_REQUIRED', 'Owner setup is required.', 409)
+
+  const passwordMatches = await verifyPassword(
+    body.password,
+    owner.password_verifier,
+  )
+  if (
+    !passwordMatches ||
+    normalizeUsername(body.username) !== owner.normalized_username
+  ) {
+    return error('INVALID_CREDENTIALS', 'Invalid username or password.', 401)
+  }
+
+  await env.DB.prepare('DELETE FROM admin_sessions WHERE expires_at <= ?')
+    .bind(now)
+    .run()
+  const session = await createSession(env.DB, owner.id, now)
+  await session.statement.run()
+
+  return json(
+    {
+      authenticated: true,
+      owner: { username: owner.username },
+      expiresAt: new Date(session.expiresAt).toISOString(),
+    },
+    200,
+    { 'set-cookie': sessionCookie(session.token, request) },
+  )
+}
+
+async function currentSession(
+  request: Request,
+  env: AuthEnv,
+  now: number,
+): Promise<Response> {
+  const session = await validateSession(request, env.DB, now)
+  if (!session)
+    return error('UNAUTHENTICATED', 'Authentication is required.', 401)
+
+  return json({
+    authenticated: true,
+    owner: { username: session.username },
+    expiresAt: new Date(session.expires_at).toISOString(),
+  })
+}
+
+async function logout(request: Request, env: AuthEnv): Promise<Response> {
+  const originError = validateOrigin(request)
+  if (originError) return originError
+
+  const token = cookieToken(request)
+  if (!token)
+    return error('UNAUTHENTICATED', 'Authentication is required.', 401)
+
+  const digest = await digestSecret(token)
+  const result = await env.DB.prepare(
+    'DELETE FROM admin_sessions WHERE token_digest = ?',
+  )
+    .bind(digest)
+    .run()
+  if (result.meta.changes === 0) {
+    return error('UNAUTHENTICATED', 'Authentication is required.', 401)
+  }
+
+  return json({ authenticated: false }, 200, {
+    'set-cookie': expiredSessionCookie(request),
+  })
+}
+
+export async function handleAdminApi(
+  request: Request,
+  env: AuthEnv,
+  now = Date.now(),
+): Promise<Response> {
+  const { pathname } = new URL(request.url)
+  const method = request.method.toUpperCase()
+
+  try {
+    if (pathname === '/api/auth/setup-status' && method === 'GET') {
+      return await setupStatus(env)
+    }
+    if (pathname === '/api/auth/setup' && method === 'POST') {
+      return await setupOwner(request, env, now)
+    }
+    if (pathname === '/api/auth/login' && method === 'POST') {
+      return await login(request, env, now)
+    }
+    if (pathname === '/api/auth/session' && method === 'GET') {
+      return await currentSession(request, env, now)
+    }
+    if (pathname === '/api/auth/logout' && method === 'POST') {
+      return await logout(request, env)
+    }
+
+    const session = await validateSession(request, env.DB, now)
+    if (!session) {
+      return error('UNAUTHENTICATED', 'Authentication is required.', 401)
+    }
+
+    return json({ boundary: 'admin-api', status: 'not-implemented' }, 501)
+  } catch {
+    return error('INTERNAL_ERROR', 'The request could not be completed.', 500)
+  }
+}
