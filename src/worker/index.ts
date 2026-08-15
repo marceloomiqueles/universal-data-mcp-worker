@@ -1,5 +1,7 @@
 interface Env {
-  ASSETS: Fetcher
+  ASSETS: {
+    fetch(request: Request): Promise<Response>
+  }
 }
 
 function isBoundary(pathname: string, boundary: string): boolean {

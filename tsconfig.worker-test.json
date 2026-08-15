@@ -1,0 +1,7 @@
+{
+  "extends": "./tsconfig.worker.json",
+  "compilerOptions": {
+    "types": ["@cloudflare/workers-types", "vitest/globals"]
+  },
+  "include": ["src/worker/**/*.ts", "tests/worker-boundaries.test.ts"]
+}

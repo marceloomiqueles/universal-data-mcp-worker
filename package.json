@@ -10,7 +10,7 @@
   },
   "scripts": {
     "dev": "vite dev",
-    "typecheck": "vue-tsc --noEmit -p tsconfig.app.json && tsc --noEmit -p tsconfig.worker.json",
+    "typecheck": "vue-tsc --noEmit -p tsconfig.admin-test.json && tsc --noEmit -p tsconfig.worker-test.json",
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
