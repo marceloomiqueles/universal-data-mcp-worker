@@ -437,7 +437,12 @@ export async function handleAdminApi(
     }
 
     return json({ boundary: 'admin-api', status: 'not-implemented' }, 501)
-  } catch {
+  } catch (cause) {
+    console.error('Admin API request failed.', {
+      error: cause instanceof Error ? cause.name : 'UnknownError',
+      method,
+      pathname,
+    })
     return error('INTERNAL_ERROR', 'The request could not be completed.', 500)
   }
 }

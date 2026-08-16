@@ -60,6 +60,8 @@ Cloudflare Worker / deployment
 
 Exact paths, router, and internal code structure are implementation gaps. Additional Workers, Queues, Durable Objects, KV, R2, and external services have not been justified.
 
+Installation provisioning is outside the application runtime. Project-owned tooling authenticates through Wrangler to create or bind D1, apply migrations, configure Worker secrets, and deploy. Runtime code receives only logical bindings such as `env.DB`; it does not receive Cloudflare management credentials or depend on resource IDs. The Wrangler provisioning path has been validated against a real Cloudflare installation.
+
 ## Core and Vertical Slices
 
 Two rules govern separation:

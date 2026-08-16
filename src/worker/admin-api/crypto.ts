@@ -1,6 +1,7 @@
 const PASSWORD_ALGORITHM = 'PBKDF2'
 const PASSWORD_HASH = 'SHA-256'
-const PASSWORD_ITERATIONS = 600_000
+const PASSWORD_ITERATIONS = 100_000
+const PASSWORD_VERIFIER_VERSION = 'pbkdf2-sha256-v2'
 const PASSWORD_KEY_BYTES = 32
 const PASSWORD_SALT_BYTES = 16
 
@@ -74,7 +75,7 @@ export async function createPasswordVerifier(
   const derived = await derivePassword(password, salt, PASSWORD_ITERATIONS)
 
   return [
-    'pbkdf2-sha256-v1',
+    PASSWORD_VERIFIER_VERSION,
     PASSWORD_ITERATIONS.toString(),
     encodeBase64Url(salt),
     encodeBase64Url(derived),
@@ -91,10 +92,17 @@ export async function verifyPassword(
   const salt = decodeBase64Url(saltText ?? '')
   const expected = decodeBase64Url(hashText ?? '')
 
+  const expectedIterations =
+    version === PASSWORD_VERIFIER_VERSION
+      ? PASSWORD_ITERATIONS
+      : version === 'pbkdf2-sha256-v1'
+        ? 600_000
+        : undefined
+
   if (
-    version !== 'pbkdf2-sha256-v1' ||
+    expectedIterations === undefined ||
     extra !== undefined ||
-    iterations !== PASSWORD_ITERATIONS ||
+    iterations !== expectedIterations ||
     salt?.length !== PASSWORD_SALT_BYTES ||
     expected?.length !== PASSWORD_KEY_BYTES
   ) {

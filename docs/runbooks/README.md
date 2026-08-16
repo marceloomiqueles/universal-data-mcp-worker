@@ -2,7 +2,7 @@
 
 ## Status
 
-No production deployment runbooks exist because deployment has not been verified. The locally validated owner/session slice now supports the narrow development procedure below; broader operational instructions remain intentionally absent.
+Cloudflare provisioning has been validated against a real Workers and D1 installation. Follow [Cloudflare self-hosted installation](cloudflare-self-hosted-installation.md) for first installation. The locally validated owner/session slice supports the development procedure below.
 
 ## Prepare Local Development
 

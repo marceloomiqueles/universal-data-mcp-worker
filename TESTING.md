@@ -47,7 +47,7 @@ pnpm dev
 
 The script prints the authorized URL only after migrations succeed. It is safe to rerun: existing valid configuration and owner/session data remain unchanged, while Wrangler applies only pending migrations. Use `pnpm setup:url` to print the URL again from an existing `.dev.vars`. Vite uses fixed local port `5173` and fails rather than silently changing the setup URL when that port is occupied.
 
-The Node setup-tool tests verify 256-bit Base64URL generation, private file permissions, repeat preservation, refusal to overwrite invalid configuration, the exact bootstrap-fragment contract, migration-before-URL ordering, and the deliberately unusable committed example.
+The Node setup-tool tests verify 256-bit Base64URL generation, private file permissions, repeat preservation, refusal to overwrite invalid configuration, the exact bootstrap-fragment contract, migration-before-URL ordering, and the deliberately unusable committed example. Provisioning-tool tests verify D1 reuse/fail-closed selection, configuration updates, stable per-installation rate-limit namespaces, and workers.dev URL extraction without contacting Cloudflare.
 
 The backend endpoints are:
 
@@ -63,10 +63,10 @@ All POST requests require `Content-Type: application/json` and an `Origin` exact
 
 The login endpoint uses the configured Cloudflare Rate Limiting binding before expensive password verification. It permits five attempts per 60-second window per Cloudflare source address, returns generic `429` JSON with `Retry-After: 60`, and recovers automatically without persisted account lockout. Cloudflare documents this mechanism as permissive and location-local, so it mitigates ordinary guessing and computational abuse but is not an exact accounting boundary.
 
-Local HTTP is accepted only on loopback hostnames. Non-loopback Admin API requests over HTTP return `426 HTTPS_REQUIRED`; HTTPS requests retain `Secure` cookies. Production Cloudflare routing is still unvalidated and must enforce visitor HTTPS independently.
+Local HTTP is accepted only on loopback hostnames. Non-loopback Admin API requests over HTTP return `426 HTTPS_REQUIRED`; HTTPS requests retain `Secure` cookies. The provisioned `workers.dev` Admin API was validated to return `426 HTTPS_REQUIRED` over HTTP and normal setup status over HTTPS. This validates the authentication-surface invariant without requiring all static SPA traffic to redirect.
 
 To reset only local owner/session state while preserving migrations, run `pnpm auth:reset:local`. This deletes the local owner and all local sessions. Never adapt that local reset command to a production database without a separately reviewed operational procedure.
 
-Local preview validation has confirmed setup status, first setup, current session, authenticated Admin API access, logout, post-logout rejection, and unchanged MCP boundary behavior. PBKDF2 login measured approximately 76–88 ms wall time in local workerd. This is not production CPU evidence.
+Local preview validation has confirmed setup status, first setup, current session, authenticated Admin API access, logout, post-logout rejection, and unchanged MCP boundary behavior. The original 600,000-iteration PBKDF2 profile measured approximately 76–88 ms wall time locally but exceeded Cloudflare's hosted PBKDF2 iteration limit. Production verification of the compatible versioned 100,000-iteration profile is required whenever its parameters change.
 
-Cloudflare deployment remains unvalidated and no deployment script is documented yet. The zero UUID in `wrangler.jsonc` is a local-development placeholder and must be replaced with the actual D1 database identifier before deployment.
+`pnpm provision:cloudflare` fails before changing resources when Wrangler is unauthenticated. Authenticated validation created and then reused D1, applied the owner-auth migration, confirmed a repeat run had no pending migrations, deployed the Worker and its rate-limit binding, verified HTTPS setup status and HTTP rejection, preserved an existing custom domain through the installation-specific configuration, and generated an authorized setup link. The provisioner stores account-specific IDs only in ignored `.wrangler.production.jsonc`; upstream `wrangler.jsonc` retains a draft zero UUID. The installing owner, not automated validation, chooses the real username and password.

@@ -98,7 +98,7 @@ describe('owner setup', () => {
     }>()
     expect(owner?.username).toBe('Marcelo.Owner')
     expect(owner?.normalized_username).toBe('marcelo.owner')
-    expect(owner?.password_verifier).toMatch(/^pbkdf2-sha256-v1\$600000\$/u)
+    expect(owner?.password_verifier).toMatch(/^pbkdf2-sha256-v2\$100000\$/u)
     expect(owner?.password_verifier).not.toContain(
       'correct horse battery staple',
     )
