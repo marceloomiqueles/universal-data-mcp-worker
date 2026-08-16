@@ -580,6 +580,7 @@ describe('Integrations page', () => {
     await vi.waitFor(() =>
       expect(document.body.textContent).toContain('Shopify connection'),
     )
+    expect(document.body.textContent).toContain('same Shopify organization')
 
     button('Save and continue')?.click()
     await vi.waitFor(() =>
@@ -712,6 +713,36 @@ describe('Integrations page', () => {
       expect(document.body.textContent).toContain('Shopify is connected.'),
     )
     expect(document.body.textContent).toContain('Verified')
+  })
+
+  it('gives actionable recovery when saved credentials cannot be read', async () => {
+    const unavailable = {
+      ...shopifyState('connection_error'),
+      lastErrorCode: 'CREDENTIALS_UNAVAILABLE',
+    }
+    vi.stubGlobal(
+      'fetch',
+      vi.fn<typeof fetch>(async (input, init) => {
+        if (input === '/api/integrations')
+          return json(integrationList('connection_error'))
+        if (input === '/api/integrations/shopify' && !init?.method)
+          return json(unavailable)
+        throw new Error(`Unexpected request: ${String(input)}`)
+      }),
+    )
+    const { element } = await render({
+      path: '/integrations',
+      responses: [authenticated()],
+    })
+    await vi.waitFor(() => expect(element.textContent).toContain('Manage'))
+    button('Manage')?.click()
+    await vi.waitFor(() =>
+      expect(document.body.textContent).toContain(
+        'Re-enter the Shopify configuration or disconnect the integration.',
+      ),
+    )
+    expect(button('Edit configuration')).not.toBeNull()
+    expect(button('Disconnect')).not.toBeNull()
   })
 
   it('requires confirmation before disconnect and refreshes the listing', async () => {

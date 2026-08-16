@@ -341,6 +341,34 @@ async function secretNames() {
   )
 }
 
+export function shopifyConfigurationExists(output) {
+  const executions = JSON.parse(output)
+  const value = Array.isArray(executions)
+    ? executions[0]?.results?.[0]?.configured
+    : undefined
+  if (value !== 0 && value !== 1) {
+    throw new Error(
+      'Could not determine whether encrypted Shopify configuration exists.',
+    )
+  }
+  return value === 1
+}
+
+async function hasEncryptedShopifyConfiguration() {
+  const result = await captureWrangler([
+    'd1',
+    'execute',
+    'DB',
+    '--remote',
+    '--json',
+    '--command',
+    'SELECT EXISTS(SELECT 1 FROM shopify_connection WHERE id = 1) AS configured',
+    '--config',
+    deploymentConfigPath,
+  ])
+  return shopifyConfigurationExists(result.stdout)
+}
+
 export function deploymentArguments(secretPath) {
   const args = [
     'deploy',
@@ -436,11 +464,15 @@ export async function provisionCloudflare(argv = process.argv.slice(2)) {
   let origin
   if (existingWorker) {
     const existingSecrets = await secretNames()
-    const missingIntegrationKey = !existingSecrets.has(
-      'INTEGRATION_SECRETS_KEY',
-    )
-      ? generateIntegrationSecretsKey()
-      : undefined
+    let missingIntegrationKey
+    if (!existingSecrets.has('INTEGRATION_SECRETS_KEY')) {
+      if (await hasEncryptedShopifyConfiguration()) {
+        throw new Error(
+          'INTEGRATION_SECRETS_KEY is missing while encrypted Shopify configuration exists. Refusing to generate a replacement key. Restore the original secret or disconnect and reconfigure Shopify.',
+        )
+      }
+      missingIntegrationKey = generateIntegrationSecretsKey()
+    }
     if (missingIntegrationKey)
       console.log('Configuring integration secret encryption.')
     origin = await deploy(

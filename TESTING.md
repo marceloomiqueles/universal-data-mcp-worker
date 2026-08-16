@@ -49,7 +49,7 @@ pnpm dev
 
 The script prints the authorized URL only after migrations succeed. It is safe to rerun: existing valid owner-bootstrap and integration-encryption secrets plus owner/session data remain unchanged, while Wrangler applies only pending migrations. Use `pnpm setup:url` to print the URL again from an existing `.dev.vars`. Vite uses fixed local port `5173` and fails rather than silently changing the setup URL when that port is occupied.
 
-The Node setup-tool tests verify 256-bit Base64URL generation, private file permissions, repeat preservation, refusal to overwrite invalid configuration, the exact bootstrap-fragment contract, migration-before-URL ordering, and the deliberately unusable committed example. Provisioning-tool tests verify D1 reuse/fail-closed selection, regeneration from the committed template, defensive Wrangler `--strict`/`--keep-vars` deployment, stable per-installation rate-limit namespaces, and workers.dev URL extraction without contacting Cloudflare. Browser-build inspection fails when any non-empty local `.dev.vars` value appears under `dist/client`.
+The Node setup-tool tests verify 256-bit Base64URL generation, private file permissions, repeat preservation, refusal to overwrite invalid configuration, the exact bootstrap-fragment contract, migration-before-URL ordering, and the deliberately unusable committed example. Provisioning-tool tests verify D1 reuse/fail-closed selection, regeneration from the committed template, defensive Wrangler `--strict`/`--keep-vars` deployment, refusal to replace a missing integration key while encrypted Shopify configuration exists, stable per-installation rate-limit namespaces, and workers.dev URL extraction without contacting Cloudflare. Browser-build inspection fails when any non-empty local `.dev.vars` value appears under `dist/client`.
 
 The backend endpoints are:
 
@@ -111,4 +111,14 @@ Worker tests apply migration `0002_shopify_connection.sql` and exercise the auth
 
 Admin tests exercise the production Shopify client and Integrations page for initial configuration, required-field feedback, retaining or replacing an existing secret, verification progress, sanitized connection failure, retry, connected details, explicit disconnect confirmation, and registry refresh. Tests also verify that the entered secret is omitted when retained, disappears from rendered state after saving, and is never written to browser storage.
 
-On 2026-08-16, after all automated checks passed, a temporary workerd test used the actual production Admin API handlers with an ephemeral migrated D1 database and the ignored maintainer development-store credentials. Saving encrypted configuration and the bounded real Shopify verification both returned success and no access-token storage existed. The temporary live test was removed afterward; normal automated tests never contact Shopify.
+Provider tests additionally cover exact/missing/additional scopes, GraphQL throttling/access-denial/generic failures, API-version and shop-identity mismatches, network and timeout failures, undecryptable saved credentials, disconnect without decryption, and edit/disconnect races against an in-flight verification.
+
+The committed opt-in live harness exercises the actual production Admin API handlers with an isolated migrated D1 database and ignored maintainer development-store credentials:
+
+```sh
+pnpm test:shopify-live
+```
+
+It requires non-empty `SHOPIFY_SHOP_DOMAIN`, `SHOPIFY_CLIENT_ID`, and `SHOPIFY_CLIENT_SECRET` values in ignored `.dev.vars`. It creates an ephemeral owner and encryption key, saves configuration through the authenticated production endpoint, verifies the real development store through the production Shopify provider, asserts encrypted-at-rest storage and `connected` state, and confirms that no access-token column exists. It performs no mutation and prints only a sanitized summary. The command is excluded from ordinary `pnpm test`; never use it with a merchant or production store.
+
+The committed harness passed against the maintainer-controlled development store on 2026-08-16. Sanitized results are recorded in [the product-path live validation](docs/audits/2026-08-16-shopify-activation-live-validation.md); credentials and provider payloads are deliberately absent.

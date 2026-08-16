@@ -123,22 +123,29 @@ export async function verifySavedShopifyConnection(
   const existing = await row(db)
   if (!existing) return null
   let code: ShopifyConnectionErrorCode | null = null
+  let clientSecret: string | undefined
   try {
-    const clientSecret = await decryptValue(
+    clientSecret = await decryptValue(
       existing.client_secret_envelope,
       key,
       encryptionContext,
     )
-    await verifyShopifyConnection(
-      {
-        shopDomain: existing.shop_domain,
-        clientId: existing.client_id,
-        clientSecret,
-      },
-      fetcher,
-    )
-  } catch (cause) {
-    code = cause instanceof ShopifyConnectionError ? cause.code : 'UNKNOWN'
+  } catch {
+    code = 'CREDENTIALS_UNAVAILABLE'
+  }
+  if (clientSecret !== undefined) {
+    try {
+      await verifyShopifyConnection(
+        {
+          shopDomain: existing.shop_domain,
+          clientId: existing.client_id,
+          clientSecret,
+        },
+        fetcher,
+      )
+    } catch (cause) {
+      code = cause instanceof ShopifyConnectionError ? cause.code : 'UNKNOWN'
+    }
   }
   await db
     .prepare(

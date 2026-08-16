@@ -2,6 +2,7 @@ export type ShopifyStatus =
   'not_configured' | 'configured' | 'connected' | 'connection_error'
 
 export type ShopifyErrorCode =
+  | 'CREDENTIALS_UNAVAILABLE'
   | 'AUTH_FAILED'
   | 'SCOPE_FAILED'
   | 'RATE_LIMITED'
@@ -11,6 +12,7 @@ export type ShopifyErrorCode =
   | 'UNKNOWN'
 
 const shopifyErrorCodes: readonly ShopifyErrorCode[] = [
+  'CREDENTIALS_UNAVAILABLE',
   'AUTH_FAILED',
   'SCOPE_FAILED',
   'RATE_LIMITED',

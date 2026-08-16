@@ -6,6 +6,7 @@ export const SHOPIFY_REQUIRED_SCOPES = [
 ] as const
 
 export type ShopifyConnectionErrorCode =
+  | 'CREDENTIALS_UNAVAILABLE'
   | 'AUTH_FAILED'
   | 'SCOPE_FAILED'
   | 'RATE_LIMITED'

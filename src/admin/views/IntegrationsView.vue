@@ -51,6 +51,8 @@ function statusColor(status: IntegrationDescriptor['status']): string {
 
 function providerError(code: ShopifyErrorCode | null): string {
   const messages: Record<ShopifyErrorCode, string> = {
+    CREDENTIALS_UNAVAILABLE:
+      'The saved Shopify credentials can no longer be read by this deployment. Re-enter the Shopify configuration or disconnect the integration.',
     AUTH_FAILED:
       'Shopify rejected the credentials. Review the client ID and secret.',
     SCOPE_FAILED:
@@ -258,8 +260,9 @@ onMounted(loadIntegrations)
 
           <template v-else-if="step === 1">
             <p class="text-body-2 text-medium-emphasis mb-5">
-              Enter the credentials for a Shopify app owned by this deployment
-              owner.
+              This connection requires a Shopify app created by the deployment
+              owner. The app and target development store must belong to the
+              same Shopify organization.
             </p>
             <VTextField
               v-model="shopDomain"
