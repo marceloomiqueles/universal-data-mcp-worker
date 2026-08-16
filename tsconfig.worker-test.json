@@ -12,6 +12,7 @@
     "src/integrations/**/*.ts",
     "src/spikes/**/*.ts",
     "src/worker/**/*.ts",
-    "tests/worker/**/*.ts"
+    "tests/worker/**/*.ts",
+    "tests/live/**/*.ts"
   ]
 }

@@ -12,6 +12,7 @@
     "setup:local": "node scripts/local-bootstrap.mjs setup",
     "setup:url": "node scripts/local-bootstrap.mjs url",
     "spike:shopify": "wrangler dev --config wrangler.shopify-spike.jsonc --port 8788",
+    "test:shopify-live": "vitest run --config vitest.shopify-live.config.ts",
     "provision:cloudflare": "node scripts/cloudflare-provision.mjs",
     "db:migrations:apply": "wrangler d1 migrations apply DB --remote",
     "deploy": "pnpm db:migrations:apply && wrangler deploy",
@@ -28,7 +29,7 @@
   "cloudflare": {
     "bindings": {
       "DB": {
-        "description": "Stores the single owner credential verifier and revocable Admin sessions. Cloudflare provisions this D1 database automatically."
+        "description": "Stores owner/session records and encrypted integration connection state. Cloudflare provisions this D1 database automatically."
       },
       "LOGIN_RATE_LIMITER": {
         "description": "Limits repeated login attempts before password verification."
@@ -41,6 +42,9 @@
       },
       "OWNER_SETUP_TOKEN": {
         "description": "Temporary high-entropy proof for first-owner setup. Generate at least 32 random bytes encoded as Base64URL, retain it until setup succeeds, and never commit it."
+      },
+      "INTEGRATION_SECRETS_KEY": {
+        "description": "A 32-byte Base64URL secret used for AES-256-GCM encryption of persisted integration credentials. Losing it makes encrypted integration configuration unrecoverable."
       }
     }
   },

@@ -13,6 +13,8 @@ export function generateBootstrapProof() {
   return randomBytes(32).toString('base64url')
 }
 
+export const generateIntegrationSecretsKey = generateBootstrapProof
+
 export function validBootstrapProof(value) {
   return typeof value === 'string' && /^[A-Za-z0-9_-]{43}$/u.test(value)
 }
@@ -21,7 +23,7 @@ export function setupUrl(secret) {
   return `${localOrigin}/login#bootstrap=${encodeURIComponent(secret)}`
 }
 
-async function readLocalBootstrapProof(path) {
+async function readLocalConfiguration(path) {
   let source
 
   try {
@@ -33,31 +35,52 @@ async function readLocalBootstrapProof(path) {
     throw error
   }
 
-  const proof = parseEnv(source).OWNER_SETUP_TOKEN
+  const values = parseEnv(source)
+  const proof = values.OWNER_SETUP_TOKEN
   if (!validBootstrapProof(proof)) {
     throw new Error(
       `${path} exists but does not contain a valid 256-bit Base64URL OWNER_SETUP_TOKEN. It was not changed.`,
     )
   }
 
-  return proof
+  const integrationKey = values.INTEGRATION_SECRETS_KEY
+  if (integrationKey !== undefined && !validBootstrapProof(integrationKey)) {
+    throw new Error(
+      `${path} contains an invalid INTEGRATION_SECRETS_KEY. It was not changed.`,
+    )
+  }
+  return { source, proof, integrationKey }
 }
 
 export async function ensureLocalConfiguration(path = localSecretPath) {
-  const existingProof = await readLocalBootstrapProof(path)
-  if (existingProof) {
+  const existing = await readLocalConfiguration(path)
+  if (existing) {
+    const integrationKey =
+      existing.integrationKey ?? generateIntegrationSecretsKey()
+    if (!existing.integrationKey) {
+      await writeFile(
+        path,
+        `${existing.source.trimEnd()}\nINTEGRATION_SECRETS_KEY="${integrationKey}"\n`,
+        { encoding: 'utf8', mode: 0o600 },
+      )
+    }
     await chmod(path, 0o600)
-    return { created: false, proof: existingProof }
+    return { created: false, proof: existing.proof, integrationKey }
   }
 
   const proof = generateBootstrapProof()
-  await writeFile(path, `OWNER_SETUP_TOKEN="${proof}"\n`, {
-    encoding: 'utf8',
-    flag: 'wx',
-    mode: 0o600,
-  })
+  const integrationKey = generateIntegrationSecretsKey()
+  await writeFile(
+    path,
+    `OWNER_SETUP_TOKEN="${proof}"\nINTEGRATION_SECRETS_KEY="${integrationKey}"\n`,
+    {
+      encoding: 'utf8',
+      flag: 'wx',
+      mode: 0o600,
+    },
+  )
 
-  return { created: true, proof }
+  return { created: true, proof, integrationKey }
 }
 
 export async function applyLocalMigrations() {
@@ -94,15 +117,15 @@ export async function applyLocalMigrations() {
 }
 
 export async function printSetupUrl(path = localSecretPath, log = console.log) {
-  const proof = await readLocalBootstrapProof(path)
-  if (!proof) {
+  const configuration = await readLocalConfiguration(path)
+  if (!configuration) {
     throw new Error(
       '.dev.vars does not exist. Run `pnpm setup:local` to prepare local development.',
     )
   }
 
   log('Authorized setup URL:')
-  log(setupUrl(proof))
+  log(setupUrl(configuration.proof))
 }
 
 export async function runLocalSetup({

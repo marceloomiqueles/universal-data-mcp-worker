@@ -11,6 +11,7 @@ import {
   rateLimitNamespace,
   regenerateProvisioningConfig,
   selectDatabase,
+  shopifyConfigurationExists,
   updateProvisioningConfig,
 } from '../scripts/cloudflare-provision.mjs'
 
@@ -48,6 +49,10 @@ describe('Cloudflare provisioning configuration', () => {
     assert.match(
       packageJson.cloudflare.bindings.OWNER_SETUP_TOKEN.description,
       /Temporary high-entropy proof/u,
+    )
+    assert.match(
+      packageJson.cloudflare.bindings.INTEGRATION_SECRETS_KEY.description,
+      /32-byte Base64URL secret/u,
     )
   })
 
@@ -185,6 +190,25 @@ describe('Cloudflare provisioning configuration', () => {
         'Deployed https://universal-data-mcp-worker.example.workers.dev',
       ),
       'https://universal-data-mcp-worker.example.workers.dev',
+    )
+  })
+
+  it('detects encrypted Shopify configuration before replacing a missing key', () => {
+    assert.equal(
+      shopifyConfigurationExists(
+        JSON.stringify([{ success: true, results: [{ configured: 1 }] }]),
+      ),
+      true,
+    )
+    assert.equal(
+      shopifyConfigurationExists(
+        JSON.stringify([{ success: true, results: [{ configured: 0 }] }]),
+      ),
+      false,
+    )
+    assert.throws(
+      () => shopifyConfigurationExists(JSON.stringify([{ results: [] }])),
+      /Could not determine/u,
     )
   })
 })

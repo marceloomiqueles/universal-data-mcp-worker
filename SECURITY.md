@@ -6,7 +6,7 @@ There are no released or supported versions yet. The repository contains an unre
 
 ## What to report privately
 
-Treat a problem as a potential vulnerability when it could expose or compromise Garmin credentials or sessions, administrative access, encryption keys, sensitive configuration, personal/sports data, authorization boundaries, destructive operations, sync/migration integrity or a deployed Worker through practical abuse.
+Treat a problem as a potential vulnerability when it could expose or compromise Garmin or Shopify credentials or sessions, administrative access, encryption keys, sensitive configuration, personal/sports/commerce data, authorization boundaries, destructive operations, sync/migration integrity or a deployed Worker through practical abuse.
 
 Ordinary bugs without security impact belong in GitHub Issues.
 

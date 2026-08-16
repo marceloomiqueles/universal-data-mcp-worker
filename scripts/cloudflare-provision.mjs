@@ -8,6 +8,7 @@ import { promisify } from 'node:util'
 
 import {
   generateBootstrapProof,
+  generateIntegrationSecretsKey,
   setupUrl as localSetupUrl,
 } from './local-bootstrap.mjs'
 
@@ -294,15 +295,19 @@ async function workerExists() {
   )
 }
 
-async function deploy(secret) {
+async function deploy(secrets = {}) {
   let secretDirectory
   const args = deploymentArguments()
 
   try {
-    if (secret) {
+    if (Object.keys(secrets).length > 0) {
       secretDirectory = await mkdtemp(join(tmpdir(), 'universal-provision-'))
       const secretPath = join(secretDirectory, 'secrets.env')
-      await writeFile(secretPath, `OWNER_SETUP_TOKEN="${secret}"\n`, {
+      const source =
+        Object.entries(secrets)
+          .map(([name, value]) => `${name}=${JSON.stringify(value)}`)
+          .join('\n') + '\n'
+      await writeFile(secretPath, source, {
         encoding: 'utf8',
         mode: 0o600,
       })
@@ -316,6 +321,52 @@ async function deploy(secret) {
   } finally {
     if (secretDirectory) await rm(secretDirectory, { recursive: true })
   }
+}
+
+async function secretNames() {
+  const result = await captureWrangler([
+    'secret',
+    'list',
+    '--json',
+    '--config',
+    deploymentConfigPath,
+  ])
+  const values = JSON.parse(result.stdout)
+  return new Set(
+    Array.isArray(values)
+      ? values
+          .map((value) => value.name)
+          .filter((name) => typeof name === 'string')
+      : [],
+  )
+}
+
+export function shopifyConfigurationExists(output) {
+  const executions = JSON.parse(output)
+  const value = Array.isArray(executions)
+    ? executions[0]?.results?.[0]?.configured
+    : undefined
+  if (value !== 0 && value !== 1) {
+    throw new Error(
+      'Could not determine whether encrypted Shopify configuration exists.',
+    )
+  }
+  return value === 1
+}
+
+async function hasEncryptedShopifyConfiguration() {
+  const result = await captureWrangler([
+    'd1',
+    'execute',
+    'DB',
+    '--remote',
+    '--json',
+    '--command',
+    'SELECT EXISTS(SELECT 1 FROM shopify_connection WHERE id = 1) AS configured',
+    '--config',
+    deploymentConfigPath,
+  ])
+  return shopifyConfigurationExists(result.stdout)
 }
 
 export function deploymentArguments(secretPath) {
@@ -412,18 +463,37 @@ export async function provisionCloudflare(argv = process.argv.slice(2)) {
   let proof
   let origin
   if (existingWorker) {
-    origin = await deploy()
+    const existingSecrets = await secretNames()
+    let missingIntegrationKey
+    if (!existingSecrets.has('INTEGRATION_SECRETS_KEY')) {
+      if (await hasEncryptedShopifyConfiguration()) {
+        throw new Error(
+          'INTEGRATION_SECRETS_KEY is missing while encrypted Shopify configuration exists. Refusing to generate a replacement key. Restore the original secret or disconnect and reconfigure Shopify.',
+        )
+      }
+      missingIntegrationKey = generateIntegrationSecretsKey()
+    }
+    if (missingIntegrationKey)
+      console.log('Configuring integration secret encryption.')
+    origin = await deploy(
+      missingIntegrationKey
+        ? { INTEGRATION_SECRETS_KEY: missingIntegrationKey }
+        : {},
+    )
     const status = await setupStatus(origin)
     if (status.setupRequired) {
       proof = generateBootstrapProof()
       console.log(
         'Owner setup is incomplete; rotating its temporary authorization.',
       )
-      origin = await deploy(proof)
+      origin = await deploy({ OWNER_SETUP_TOKEN: proof })
     }
   } else {
     proof = generateBootstrapProof()
-    origin = await deploy(proof)
+    origin = await deploy({
+      OWNER_SETUP_TOKEN: proof,
+      INTEGRATION_SECRETS_KEY: generateIntegrationSecretsKey(),
+    })
   }
 
   const status = await setupStatus(origin)

@@ -7,6 +7,7 @@ import {
 } from './crypto'
 import type { IntegrationRegistry } from '../../core/integrations/registry'
 import { listIntegrations } from './integrations'
+import { deleteShopify, getShopify, putShopify, verifyShopify } from './shopify'
 
 const SESSION_COOKIE = 'admin_session'
 const BOOTSTRAP_PROOF_HEADER = 'x-owner-bootstrap-proof'
@@ -20,6 +21,7 @@ export interface AuthEnv {
   LOGIN_RATE_LIMITER: RateLimit
   OWNER_SETUP_TOKEN?: string
   OAUTH_PROVIDER?: OAuthHelpers
+  INTEGRATION_SECRETS_KEY?: string
 }
 
 interface OwnerRecord {
@@ -491,7 +493,28 @@ export async function handleAdminApi(
     }
 
     if (pathname === '/api/integrations' && method === 'GET') {
-      return listIntegrations(registry)
+      return await listIntegrations(registry, env.DB)
+    }
+    if (pathname === '/api/integrations/shopify' && method === 'GET') {
+      return await getShopify(request, env)
+    }
+    if (
+      pathname === '/api/integrations/shopify/configuration' &&
+      method === 'PUT'
+    ) {
+      const originError = validateOrigin(request)
+      return originError ?? (await putShopify(request, env))
+    }
+    if (pathname === '/api/integrations/shopify/verify' && method === 'POST') {
+      const originError = validateOrigin(request)
+      return originError ?? (await verifyShopify(env))
+    }
+    if (
+      pathname === '/api/integrations/shopify/disconnect' &&
+      method === 'POST'
+    ) {
+      const originError = validateOrigin(request)
+      return originError ?? (await deleteShopify(env))
     }
     if (pathname === '/api/mcp/oauth/grants' && method === 'GET') {
       return mcpGrantStatus(env)
