@@ -118,6 +118,24 @@ describe('Shopify verification transport', () => {
     clientSecret: 'secret',
   }
 
+  function fetchWithScopes(scopes: string): typeof fetch {
+    return vi.fn(async (input: RequestInfo | URL) =>
+      String(input).endsWith('/admin/oauth/access_token')
+        ? Response.json({ access_token: 'token', scope: scopes })
+        : Response.json(
+            {
+              data: {
+                shop: {
+                  id: 'gid://shopify/Shop/1',
+                  myshopifyDomain: 'example.myshopify.com',
+                },
+              },
+            },
+            { headers: { 'x-shopify-api-version': '2026-07' } },
+          ),
+    ) as typeof fetch
+  }
+
   it('uses client credentials and a minimal read-only versioned query', async () => {
     const fetcher = successfulShopifyFetch()
     await verifyShopifyConnection(credentials, fetcher)
@@ -149,17 +167,27 @@ describe('Shopify verification transport', () => {
     ).rejects.toMatchObject({ code } satisfies Partial<ShopifyConnectionError>)
   })
 
-  it('rejects missing exact scopes and malformed provider responses', async () => {
-    const missingScope = vi.fn(async () =>
-      Response.json({
-        access_token: 'token',
-        expires_in: 100,
-        scope: 'read_products,read_inventory,read_locations',
-      }),
-    ) as typeof fetch
+  it.each([
+    ['read_products,read_inventory,read_locations,read_orders'],
+    ['read_products,read_inventory,read_locations,read_orders,read_all_orders'],
+    ['read_products,read_inventory,read_locations,read_orders,read_themes'],
+  ])('accepts a grant containing all required scopes: %s', async (scopes) => {
     await expect(
-      verifyShopifyConnection(credentials, missingScope),
+      verifyShopifyConnection(credentials, fetchWithScopes(scopes)),
+    ).resolves.toBeUndefined()
+  })
+
+  it.each([
+    ['read_products,read_inventory,read_locations'],
+    ['read_products,read_locations,read_orders'],
+    ['read_products,read_inventory,read_locations,read_all_orders'],
+  ])('rejects a grant missing a required scope: %s', async (scopes) => {
+    await expect(
+      verifyShopifyConnection(credentials, fetchWithScopes(scopes)),
     ).rejects.toMatchObject({ code: 'SCOPE_FAILED' })
+  })
+
+  it('rejects malformed provider responses', async () => {
     const malformed = vi.fn(async () =>
       Response.json({
         access_token: 'token',
@@ -186,20 +214,6 @@ describe('Shopify verification transport', () => {
     await expect(
       verifyShopifyConnection(credentials, malformed),
     ).rejects.toMatchObject({ code: 'MALFORMED_RESPONSE' })
-  })
-
-  it('rejects additional granted scopes', async () => {
-    const fetcher = vi.fn(async () =>
-      Response.json({
-        access_token: 'token',
-        scope:
-          'read_products,read_inventory,read_locations,read_orders,read_all_orders,read_customers',
-      }),
-    ) as typeof fetch
-
-    await expect(
-      verifyShopifyConnection(credentials, fetcher),
-    ).rejects.toMatchObject({ code: 'SCOPE_FAILED' })
   })
 
   it.each([

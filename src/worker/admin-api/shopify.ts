@@ -12,6 +12,7 @@ import {
   syncShopifyInventory,
 } from '../../integrations/shopify/ingestion'
 import {
+  getLastSuccessfulShopifyOrderSyncAt,
   getShopifyOrderSyncStatus,
   ShopifyOrderSyncConflictError,
   syncShopifyOrders,
@@ -57,6 +58,9 @@ export async function getShopify(
     sync: await getShopifySyncStatus(env.DB),
     lastSuccessfulSyncAt: await getLastSuccessfulShopifySyncAt(env.DB),
     orderSync: await getShopifyOrderSyncStatus(env.DB),
+    lastSuccessfulOrderSyncAt: await getLastSuccessfulShopifyOrderSyncAt(
+      env.DB,
+    ),
   })
 }
 

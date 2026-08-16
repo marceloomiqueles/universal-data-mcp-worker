@@ -495,9 +495,9 @@ onMounted(loadIntegrations)
               </VCardTitle>
               <VCardText>
                 <VAlert type="info" variant="tonal" class="mb-3">
-                  This deployment currently synchronizes a bounded recent 60-day
-                  window. The configured read_all_orders scope permits older
-                  orders, but full-history ingestion is not implemented.
+                  This deployment synchronizes a bounded recent 60-day window.
+                  Required access is read_orders; additional Shopify permissions
+                  do not expand this product coverage.
                 </VAlert>
                 <p v-if="!shopify.orderSync" class="mb-3">
                   Orders have never been synchronized.
@@ -519,8 +519,9 @@ onMounted(loadIntegrations)
                     variant="tonal"
                     class="mb-3"
                   >
-                    Stored order coverage is incomplete. Run Sync orders now to
-                    continue when Shopify is available.
+                    The latest order sync is incomplete. Previously completed
+                    sales data remains available when its recorded window covers
+                    the requested period.
                   </VAlert>
                   <p class="text-body-2 mb-1">
                     Orders: {{ shopify.orderSync.counts.orders }} · Line items:
@@ -535,7 +536,7 @@ onMounted(loadIntegrations)
                     {{ new Date(shopify.orderSync.windowEnd).toLocaleString() }}
                   </p>
                   <p class="text-caption text-medium-emphasis mb-3">
-                    Last order sync
+                    Latest order sync attempt
                     {{
                       new Date(
                         shopify.orderSync.completedAt ??
@@ -544,6 +545,17 @@ onMounted(loadIntegrations)
                     }}
                   </p>
                 </template>
+                <p class="text-body-2 mb-3">
+                  Last successful complete order sync:
+                  <span v-if="shopify.lastSuccessfulOrderSyncAt">
+                    {{
+                      new Date(
+                        shopify.lastSuccessfulOrderSyncAt,
+                      ).toLocaleString()
+                    }}
+                  </span>
+                  <span v-else>Never</span>
+                </p>
                 <VAlert
                   v-if="orderSyncMessage"
                   :type="

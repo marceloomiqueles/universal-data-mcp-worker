@@ -34,6 +34,10 @@ export interface ShopifySalesResult {
     readonly currency: string
   }[]
   readonly lastSuccessfulSyncAt: string
+  readonly latestSyncAttempt: {
+    readonly status: 'complete' | 'partial' | 'failed'
+    readonly completedAt: string | null
+  }
   readonly coverage: {
     readonly limitation: 'recent_60_days_only'
     readonly windowStart: string
@@ -59,6 +63,11 @@ interface SuccessfulRun {
   window_end: number
   shop_timezone: string
   shop_currency: string
+}
+
+interface LatestRun {
+  status: 'running' | 'complete' | 'partial' | 'failed'
+  completed_at: number | null
 }
 
 interface OrderAmountRow {
@@ -102,18 +111,26 @@ export async function queryShopifySales(
       `SELECT status, coverage_complete, completed_at, window_start, window_end,
         shop_timezone, shop_currency
        FROM shopify_order_sync_runs
-       ORDER BY started_at DESC LIMIT 1`,
+       WHERE status = 'complete' AND coverage_complete = 1
+       ORDER BY completed_at DESC LIMIT 1`,
     )
     .first<SuccessfulRun>()
   if (
     !run ||
-    run.status !== 'complete' ||
-    run.coverage_complete !== 1 ||
     !run.shop_timezone ||
     !run.shop_currency ||
     start < run.window_start ||
     end > run.window_end
   )
+    throw new ShopifySalesQueryError('COVERAGE_UNAVAILABLE')
+
+  const latestAttempt = await db
+    .prepare(
+      `SELECT status, completed_at FROM shopify_order_sync_runs
+       ORDER BY started_at DESC LIMIT 1`,
+    )
+    .first<LatestRun>()
+  if (!latestAttempt || latestAttempt.status === 'running')
     throw new ShopifySalesQueryError('COVERAGE_UNAVAILABLE')
 
   const orders = await db
@@ -207,6 +224,13 @@ export async function queryShopifySales(
         currency: item.currency,
       })),
     lastSuccessfulSyncAt: new Date(run.completed_at).toISOString(),
+    latestSyncAttempt: {
+      status: latestAttempt.status,
+      completedAt:
+        latestAttempt.completed_at === null
+          ? null
+          : new Date(latestAttempt.completed_at).toISOString(),
+    },
     coverage: {
       limitation: 'recent_60_days_only',
       windowStart: new Date(run.window_start).toISOString(),

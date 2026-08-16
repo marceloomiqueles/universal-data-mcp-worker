@@ -149,6 +149,8 @@ function shopifyState(
     status,
     verifiedAt: status === 'connected' ? '2026-08-16T12:00:00.000Z' : null,
     lastErrorCode: status === 'connection_error' ? 'AUTH_FAILED' : null,
+    lastSuccessfulOrderSyncAt:
+      status === 'connected' ? '2026-08-16T18:01:00.000Z' : null,
     ...overrides,
   }
 }
@@ -859,7 +861,7 @@ describe('Integrations page', () => {
     )
     expect(document.body.textContent).toContain('recent 60-day window')
     expect(document.body.textContent).toContain(
-      'read_all_orders scope permits older orders',
+      'Required access is read_orders',
     )
     expect(button('Sync orders now')).toBeDefined()
   })
@@ -931,7 +933,10 @@ describe('Integrations page', () => {
     expect(document.body.textContent).toContain('Latest order sync outcome')
     expect(document.body.textContent).toContain('Orders: 1')
     expect(document.body.textContent).toContain('Line items: 2')
-    expect(document.body.textContent).toContain('Last order sync')
+    expect(document.body.textContent).toContain('Latest order sync attempt')
+    expect(document.body.textContent).toContain(
+      'Last successful complete order sync:',
+    )
     expect(document.body.textContent).not.toContain(
       'Stored order coverage is incomplete.',
     )
@@ -966,7 +971,10 @@ describe('Integrations page', () => {
       ),
     )
     expect(document.body.textContent).toContain(
-      'Stored order coverage is incomplete.',
+      'The latest order sync is incomplete.',
+    )
+    expect(document.body.textContent).toContain(
+      'Previously completed sales data remains available',
     )
 
     button('Sync orders now')?.click()

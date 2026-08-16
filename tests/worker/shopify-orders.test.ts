@@ -407,35 +407,184 @@ describe('Shopify order ingestion', () => {
     await expect(first).resolves.toMatchObject({ status: 'complete' })
   })
 
-  it('preserves prior data and truthful status after a later-page failure', async () => {
+  it('keeps prior complete coverage available after a failed attempt before writes', async () => {
     await connectedShopify()
     await syncShopifyOrders(
       env.DB,
       key,
       orderFetcher(new Map([['start', topPage([order('old', '4', [])])]])),
+      vi
+        .fn()
+        .mockReturnValueOnce(startedAt)
+        .mockReturnValueOnce(startedAt + 1000),
     )
     const result = await syncShopifyOrders(
       env.DB,
       key,
       orderFetcher(
-        new Map<string, Response | (() => Response)>([
-          ['start', topPage([order('new', '8', [])], true, 'next')],
-          ['next', () => new Response('unavailable', { status: 503 })],
-        ]),
+        new Map([['start', new Response('unavailable', { status: 503 })]]),
       ),
+      vi
+        .fn()
+        .mockReturnValueOnce(startedAt + 2000)
+        .mockReturnValueOnce(startedAt + 3000),
     )
     expect(result).toMatchObject({
-      status: 'partial',
+      status: 'failed',
       coverageComplete: false,
       lastErrorCode: 'SOURCE_UNAVAILABLE',
     })
-    expect(await count('shopify_orders')).toBe(2)
     await expect(
       queryShopifySales(env.DB, {
         start: '2026-08-16T00:00:00.000Z',
         end: '2026-08-16T18:00:00.000Z',
       }),
-    ).rejects.toMatchObject({ code: 'COVERAGE_UNAVAILABLE' })
+    ).resolves.toMatchObject({
+      totalSales: '4',
+      lastSuccessfulSyncAt: new Date(startedAt + 1000).toISOString(),
+      latestSyncAttempt: {
+        status: 'failed',
+        completedAt: new Date(startedAt + 3000).toISOString(),
+      },
+    })
+  })
+
+  it('keeps conservative complete coverage metadata after newer partial writes', async () => {
+    await connectedShopify()
+    await syncShopifyOrders(
+      env.DB,
+      key,
+      orderFetcher(new Map([['start', topPage([order('old', '4', [])])]])),
+      vi
+        .fn()
+        .mockReturnValueOnce(startedAt)
+        .mockReturnValueOnce(startedAt + 1000),
+    )
+    const partial = await syncShopifyOrders(
+      env.DB,
+      key,
+      orderFetcher(
+        new Map<string, Response | (() => Response)>([
+          [
+            'start',
+            topPage(
+              [order('old', '8', []), order('new', '2', [])],
+              true,
+              'next',
+            ),
+          ],
+          ['next', () => new Response('unavailable', { status: 503 })],
+        ]),
+      ),
+      vi
+        .fn()
+        .mockReturnValueOnce(startedAt + 2000)
+        .mockReturnValueOnce(startedAt + 3000),
+    )
+    expect(partial.status).toBe('partial')
+    await expect(
+      queryShopifySales(env.DB, {
+        start: '2026-08-16T00:00:00.000Z',
+        end: '2026-08-16T18:00:00.000Z',
+      }),
+    ).resolves.toMatchObject({
+      totalSales: '10',
+      lastSuccessfulSyncAt: new Date(startedAt + 1000).toISOString(),
+      latestSyncAttempt: {
+        status: 'partial',
+        completedAt: new Date(startedAt + 3000).toISOString(),
+      },
+      coverage: { complete: true },
+    })
+
+    await syncShopifyOrders(
+      env.DB,
+      key,
+      orderFetcher(new Map([['next', topPage([])]])),
+      vi
+        .fn()
+        .mockReturnValueOnce(startedAt + 4000)
+        .mockReturnValueOnce(startedAt + 5000),
+    )
+    await expect(
+      queryShopifySales(env.DB, {
+        start: '2026-08-16T00:00:00.000Z',
+        end: '2026-08-16T18:00:00.000Z',
+      }),
+    ).resolves.toMatchObject({
+      totalSales: '10',
+      lastSuccessfulSyncAt: new Date(startedAt + 5000).toISOString(),
+      latestSyncAttempt: { status: 'complete' },
+    })
+  })
+
+  it.each(['partial', 'failed'] as const)(
+    'rejects sales when only a %s run exists',
+    async (outcome) => {
+      await connectedShopify()
+      const pages =
+        outcome === 'failed'
+          ? new Map<string, Response | (() => Response)>([
+              ['start', new Response('unavailable', { status: 503 })],
+            ])
+          : new Map<string, Response | (() => Response)>([
+              ['start', topPage([order('1', '4', [])], true, 'next')],
+              ['next', new Response('unavailable', { status: 503 })],
+            ])
+      await syncShopifyOrders(env.DB, key, orderFetcher(pages))
+      await expect(
+        queryShopifySales(env.DB, {
+          start: '2026-08-16T00:00:00.000Z',
+          end: '2026-08-16T18:00:00.000Z',
+        }),
+      ).rejects.toMatchObject({ code: 'COVERAGE_UNAVAILABLE' })
+    },
+  )
+
+  it('makes the newest complete run authoritative after an intervening failure', async () => {
+    await connectedShopify()
+    await syncShopifyOrders(
+      env.DB,
+      key,
+      orderFetcher(new Map([['start', topPage([order('1', '4', [])])]])),
+      vi
+        .fn()
+        .mockReturnValueOnce(startedAt)
+        .mockReturnValueOnce(startedAt + 1000),
+    )
+    await syncShopifyOrders(
+      env.DB,
+      key,
+      orderFetcher(
+        new Map([['start', new Response('unavailable', { status: 503 })]]),
+      ),
+      vi
+        .fn()
+        .mockReturnValueOnce(startedAt + 2000)
+        .mockReturnValueOnce(startedAt + 3000),
+    )
+    await syncShopifyOrders(
+      env.DB,
+      key,
+      orderFetcher(new Map([['start', topPage([order('1', '9', [])])]])),
+      vi
+        .fn()
+        .mockReturnValueOnce(startedAt + 4000)
+        .mockReturnValueOnce(startedAt + 5000),
+    )
+    await expect(
+      queryShopifySales(env.DB, {
+        start: '2026-08-16T00:00:00.000Z',
+        end: '2026-08-16T18:00:00.000Z',
+      }),
+    ).resolves.toMatchObject({
+      totalSales: '9',
+      lastSuccessfulSyncAt: new Date(startedAt + 5000).toISOString(),
+      latestSyncAttempt: {
+        status: 'complete',
+        completedAt: new Date(startedAt + 5000).toISOString(),
+      },
+    })
   })
 
   it('rejects cross-currency source values without committing them', async () => {

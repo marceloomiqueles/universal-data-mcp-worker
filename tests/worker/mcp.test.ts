@@ -905,6 +905,18 @@ describe('MCP protocol and list_integrations tool', () => {
         Date.parse('2026-08-17T00:00:00Z'),
       ),
       env.DB.prepare(
+        `INSERT INTO shopify_order_sync_runs
+         (id, status, started_at, completed_at, window_start, window_end,
+          top_has_next, coverage_complete, last_error_code)
+         VALUES ('mcp-order-failed', 'failed', ?, ?, ?, ?, 1, 0,
+                 'SOURCE_UNAVAILABLE')`,
+      ).bind(
+        Date.parse('2026-08-16T18:01:00Z'),
+        Date.parse('2026-08-16T18:01:01Z'),
+        Date.parse('2026-08-01T00:00:00Z'),
+        Date.parse('2026-08-17T00:00:00Z'),
+      ),
+      env.DB.prepare(
         `INSERT INTO shopify_orders
          (source_gid, name, created_at, updated_at, cancelled_at,
           current_total_amount, currency_code, last_seen_order_scan_id)
@@ -1039,6 +1051,10 @@ describe('MCP protocol and list_integrations tool', () => {
               },
             ],
             lastSuccessfulOrderSync: '2026-08-16T18:00:00.000Z',
+            latestOrderSyncAttempt: {
+              status: 'failed',
+              completedAt: '2026-08-16T18:01:01.000Z',
+            },
             coverage: {
               limitation: 'recent_60_days_only',
               complete: true,

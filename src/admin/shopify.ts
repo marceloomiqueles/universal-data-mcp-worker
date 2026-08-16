@@ -32,6 +32,7 @@ export interface ShopifyConnectionState {
   sync?: ShopifySyncState | null
   lastSuccessfulSyncAt?: string | null
   orderSync?: ShopifyOrderSyncState | null
+  lastSuccessfulOrderSyncAt?: string | null
 }
 
 export type ShopifySyncStatus = 'complete' | 'partial' | 'failed'
@@ -101,7 +102,10 @@ function validState(value: unknown): value is ShopifyConnectionState {
       typeof state.lastSuccessfulSyncAt === 'string') &&
     (state.orderSync === undefined ||
       state.orderSync === null ||
-      validOrderSync(state.orderSync))
+      validOrderSync(state.orderSync)) &&
+    (state.lastSuccessfulOrderSyncAt === undefined ||
+      state.lastSuccessfulOrderSyncAt === null ||
+      typeof state.lastSuccessfulOrderSyncAt === 'string')
   )
 }
 

@@ -2,6 +2,7 @@ import { env } from 'cloudflare:test'
 import { expect, it } from 'vitest'
 
 import {
+  acquireShopifyAccessToken,
   SHOPIFY_API_VERSION,
   SHOPIFY_REQUIRED_SCOPES,
 } from '../../src/integrations/shopify/provider'
@@ -50,6 +51,11 @@ function adminRequest(
 }
 
 it('validates the real Shopify development store through the production Admin backend', async () => {
+  const { grantedScopes } = await acquireShopifyAccessToken({
+    shopDomain: env.LIVE_SHOPIFY_SHOP_DOMAIN,
+    clientId: env.LIVE_SHOPIFY_CLIENT_ID,
+    clientSecret: env.LIVE_SHOPIFY_CLIENT_SECRET,
+  })
   const setup = await handleRequest(
     new Request(`${origin}/api/auth/setup`, {
       method: 'POST',
@@ -198,7 +204,8 @@ it('validates the real Shopify development store through the production Admin ba
     'Sanitized Shopify product and order-path validation evidence:',
     {
       apiVersion: SHOPIFY_API_VERSION,
-      scopes: [...SHOPIFY_REQUIRED_SCOPES],
+      requiredProductScopes: [...SHOPIFY_REQUIRED_SCOPES],
+      providerReportedGrantedScopes: [...grantedScopes].sort(),
       store: 'maintainer-controlled development store',
       encryptedAtRest: true,
       tokenPersisted: false,

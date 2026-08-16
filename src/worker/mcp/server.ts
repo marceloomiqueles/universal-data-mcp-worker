@@ -232,6 +232,10 @@ export async function createMcpServer(
       currency: z.string(),
       topProducts: z.array(topProductSchema).max(25),
       lastSuccessfulOrderSync: z.string().datetime(),
+      latestOrderSyncAttempt: z.object({
+        status: z.enum(['complete', 'partial', 'failed']),
+        completedAt: z.string().datetime().nullable(),
+      }),
       coverage: z.object({
         limitation: z.literal('recent_60_days_only'),
         windowStart: z.string().datetime(),
@@ -299,6 +303,7 @@ export async function createMcpServer(
             currency: sales.currency,
             topProducts: sales.topProducts,
             lastSuccessfulOrderSync: sales.lastSuccessfulSyncAt,
+            latestOrderSyncAttempt: sales.latestSyncAttempt,
             coverage: sales.coverage,
           }
           return {
