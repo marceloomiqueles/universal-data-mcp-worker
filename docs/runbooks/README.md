@@ -4,6 +4,17 @@
 
 No production deployment runbooks exist because deployment has not been verified. The locally validated owner/session slice now supports the narrow development procedure below; broader operational instructions remain intentionally absent.
 
+## Prepare Local Development
+
+From an installed checkout, run:
+
+```sh
+pnpm setup:local
+pnpm dev
+```
+
+Setup creates or preserves the ignored bootstrap secret, applies pending migrations to the local `DB` binding, and prints the authorized first-owner URL. Repeating it does not replace the proof, owner, or sessions. An existing invalid `.dev.vars` is left unchanged and must be reviewed deliberately.
+
 ## Reset Local Owner Authentication
 
 Use this only when a disposable local development owner must be recreated:
@@ -13,7 +24,7 @@ pnpm auth:reset:local
 pnpm setup:url
 ```
 
-The reset deletes every owner/session row from the local D1 database while preserving its schema and migration history. It cannot target remote D1 because the command includes `--local`. It is destructive: the former local credentials and sessions stop working immediately. The second command prints the authorized first-run URL from the ignored `.dev.vars`; run `pnpm setup:local` instead if no local secret file exists.
+The reset deletes every owner/session row from the local D1 database while preserving its schema and migration history. It cannot target remote D1 because the command includes `--local`. It is destructive: the former local credentials and sessions stop working immediately. The second command prints the authorized first-run URL from the ignored `.dev.vars`; run `pnpm setup:local` instead if no local secret file exists or new migrations may be pending.
 
 This document records the agreed operational contract and the threshold for creating concrete procedures.
 

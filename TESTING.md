@@ -38,15 +38,16 @@ The Admin tests use the production Vue Router and session code. They verify firs
 
 `pnpm typecheck` uses separate Admin-test and Worker-test TypeScript projects. Each project includes its runtime source and related tests without mixing DOM types into Worker code or Worker types into Admin code.
 
-For local validation, create the ignored secret file with the repository script, apply the migration, and start development:
+For local validation, let the repository script create or preserve the ignored secret and apply pending local D1 migrations, then start development:
 
 ```sh
 pnpm setup:local
-pnpm exec wrangler d1 migrations apply DB --local
 pnpm dev
 ```
 
-The script prints the authorized URL. Use `pnpm setup:url` to print it again from an existing `.dev.vars`. Vite uses fixed local port `5173` and fails rather than silently changing the setup URL when that port is occupied.
+The script prints the authorized URL only after migrations succeed. It is safe to rerun: existing valid configuration and owner/session data remain unchanged, while Wrangler applies only pending migrations. Use `pnpm setup:url` to print the URL again from an existing `.dev.vars`. Vite uses fixed local port `5173` and fails rather than silently changing the setup URL when that port is occupied.
+
+The Node setup-tool tests verify 256-bit Base64URL generation, private file permissions, repeat preservation, refusal to overwrite invalid configuration, the exact bootstrap-fragment contract, migration-before-URL ordering, and the deliberately unusable committed example.
 
 The backend endpoints are:
 

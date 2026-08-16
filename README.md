@@ -61,22 +61,25 @@ Requirements:
 - Node.js 22.13 or newer;
 - pnpm 11.22.0 or a compatible pnpm 11 release.
 
-Install dependencies, create an ignored local bootstrap secret, apply the local D1 migration, and start the Cloudflare/Vite development environment:
+Install dependencies, prepare local configuration and D1, and start the Cloudflare/Vite development environment:
 
 ```sh
 pnpm install
 pnpm setup:local
-pnpm exec wrangler d1 migrations apply DB --local
 pnpm dev
 ```
 
-`pnpm setup:local` uses Node's cryptographically secure random generator to create `.dev.vars` with mode `0600`. It refuses to overwrite an existing file and prints the authorized first-run URL:
+`pnpm setup:local` performs the complete non-destructive local preparation:
+
+1. it uses Node's cryptographically secure random generator to create a 256-bit bootstrap proof in `.dev.vars` with mode `0600`, or preserves an existing valid file;
+2. it applies every pending migration to the local D1 database through the `DB` binding;
+3. after migrations succeed, it prints the authorized first-run URL:
 
 ```text
 http://localhost:5173/login#bootstrap=<generated-proof>
 ```
 
-If the development server is already running or the URL is needed again, print it deterministically from the configured secret:
+The command is safe to repeat: Wrangler applies only pending migrations, the existing proof is not replaced, and existing owner/session rows are preserved. If `.dev.vars` exists but lacks a valid proof, setup stops without modifying the file. If the development server is already running or the URL is needed again, print it deterministically from the configured secret:
 
 ```sh
 pnpm setup:url
@@ -84,7 +87,7 @@ pnpm setup:url
 
 Open that URL, choose the owner username and a password of at least 12 characters, confirm it, and select **Create account**. The URL fragment is not sent while loading the SPA. The SPA removes it immediately, keeps the proof only in memory, and submits it separately from account data. The browser receives an `HttpOnly` session cookie and opens the authenticated Admin shell.
 
-The committed [`.dev.vars.example`](.dev.vars.example) lists the required local secret without providing a usable value. Actual `.dev.vars` files are ignored. The backend accepts the proof only while no owner exists. After setup, the proof can and should be removed from local or production secret configuration; use `pnpm setup:url` before removing it if the authorized URL is still needed.
+The committed [`.dev.vars.example`](.dev.vars.example) uses Cloudflare's official local-secret convention and lists the required name without providing a usable value. Actual `.dev.vars` files are ignored. The backend accepts the proof only while no owner exists. If an owner already exists, rerunning local setup preserves that owner and the normal `/login` flow remains authoritative. After first-owner setup, the proof can be removed from local configuration; retain it only when a later explicit local auth reset is expected.
 
 After setup, open the Admin Web normally and sign in with the owner username and password. Use **Sign out** in the application bar to invalidate the current session. See [TESTING.md](TESTING.md) for the validated API and UI behavior.
 
