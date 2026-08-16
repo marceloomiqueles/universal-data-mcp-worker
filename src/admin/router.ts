@@ -37,6 +37,8 @@ function safeRedirect(value: unknown): string {
 export function createAdminRouter(
   history: RouterHistory = createWebHistory(),
   session: AdminSession = adminSession,
+  navigateOutsideSpa: (url: string) => void = (url) =>
+    globalThis.location.assign(url),
 ) {
   const router = createRouter({ history, routes })
 
@@ -45,7 +47,12 @@ export function createAdminRouter(
 
     if (session.state.status === 'authenticated') {
       if (to.name === 'login' || to.name === 'loading') {
-        return safeRedirect(to.query.redirect)
+        const redirect = safeRedirect(to.query.redirect)
+        if (redirect.startsWith('/api/mcp/oauth/authorize?')) {
+          navigateOutsideSpa(redirect)
+          return false
+        }
+        return redirect
       }
       return true
     }

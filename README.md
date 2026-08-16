@@ -8,7 +8,7 @@ Garmin Connect → Cloudflare Worker → D1 where appropriate → MCP → ChatGP
 
 ## Current Status
 
-The project has an initial deployable scaffold, single-owner Admin authentication, a compiled integration registry, and a minimal read-only MCP server. One Cloudflare Worker serves the Vue/Vuetify Admin SPA, authenticated Admin API, and an OAuth-protected MCP 2025-11-25 Streamable HTTP endpoint. The `list_integrations` tool reports the real compiled registry; Garmin is registered but not configured. Garmin provider/data access and real ChatGPT connectivity are not implemented or validated yet.
+The project has an initial deployable scaffold, single-owner Admin authentication, a compiled integration registry, and a minimal read-only MCP server. One Cloudflare Worker serves the Vue/Vuetify Admin SPA, authenticated Admin API, and an OAuth-protected MCP 2025-11-25 Streamable HTTP endpoint. The `list_integrations` tool reports the real compiled registry; Garmin is registered but not configured. Read-only ChatGPT connectivity is validated, but Garmin provider/data access is not implemented yet.
 
 The current foundation proves the single-deployment build and routing model without prematurely inventing product contracts.
 
@@ -50,7 +50,7 @@ The operational goal is additional infrastructure cost close to `$0` for reasona
 
 ## Current Scope
 
-This repository contains a working infrastructure scaffold and a minimal MCP connectivity surface. It does not provide usable Garmin data yet, and ChatGPT connection remains an explicit validation gap.
+This repository contains a working infrastructure scaffold and a validated minimal MCP connectivity surface. It does not provide usable Garmin data yet.
 
 Without explicit agreement, the scope excludes multi-tenancy, enterprise RBAC, billing, fictional verticals, a plugin marketplace, dynamic code loading, a universal sports model, forecasting, ML, BI, and speculative infrastructure.
 
@@ -139,7 +139,7 @@ The Worker exposes standard MCP Streamable HTTP at `/mcp`, targeting the stable 
 
 Exactly one tool is available: `list_integrations`. It reads the shared compiled registry directly and returns only integration id, name, description, and setup status. It performs no writes and returns an empty collection normally when no integration is registered.
 
-The protocol and OAuth flow are validated under local workerd. A deployed endpoint has **not yet been connected to ChatGPT**, so this repository does not yet claim ChatGPT compatibility. Real deployment, discovery, authorization, invocation, interpretation, and revocation remain required evidence.
+The read-only connection was validated on 2026-08-16 against a real Cloudflare deployment and ChatGPT Work in developer mode. ChatGPT completed OAuth 2.1 with PKCE through the deployment owner, discovered `list_integrations`, invoked it from a natural-language question, and correctly described Garmin as registered and `not_configured`. MCP Inspector independently validated initialization, tool discovery, and invocation against the same HTTPS deployment. This evidence covers only the current read-only tool and tested client mode; it does not claim Garmin data tools, write actions, other ChatGPT plans, or other MCP clients. The deployed registry was non-empty, so empty-result behavior remains covered by production-path automated tests rather than a real ChatGPT conversation.
 
 ### Reset local owner authentication
 

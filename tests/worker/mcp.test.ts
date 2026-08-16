@@ -105,13 +105,33 @@ async function oauthAccessToken(): Promise<{
   )
   expect(consent.status).toBe(200)
   expect(await consent.text()).toContain('Authorize MCP access')
+  expect(consent.headers.get('content-security-policy')).toContain(
+    "form-action 'self' https://client.example.test",
+  )
+  expect(consent.headers.get('content-security-policy')).not.toContain(
+    'attacker.example',
+  )
+
+  const crossOriginApproval = await handleRequest(
+    new Request(authorize, {
+      method: 'POST',
+      headers: {
+        cookie: adminCookie,
+        origin: 'https://attacker.example',
+        'content-type': 'application/x-www-form-urlencoded',
+      },
+      body: 'decision=approve',
+    }),
+    workerEnv(),
+  )
+  expect(crossOriginApproval.status).toBe(403)
 
   const approval = await handleRequest(
     new Request(authorize, {
       method: 'POST',
       headers: {
         cookie: adminCookie,
-        origin,
+        origin: 'null',
         'content-type': 'application/x-www-form-urlencoded',
       },
       body: 'decision=approve',

@@ -14,6 +14,7 @@ interface RenderOptions {
   hash?: string
   hostname?: string
   beforeReady?: (element: HTMLElement) => Promise<void> | void
+  navigateOutsideSpa?: (url: string) => void
 }
 
 let mountedElement: HTMLElement | undefined
@@ -71,7 +72,11 @@ async function render(options: RenderOptions = {}) {
     },
     history: { replaceState },
   })
-  const router = createAdminRouter(createMemoryHistory(), session)
+  const router = createAdminRouter(
+    createMemoryHistory(),
+    session,
+    options.navigateOutsideSpa,
+  )
   const navigation = router.push(options.path ?? '/')
 
   if (!options.beforeReady) {
@@ -355,6 +360,30 @@ describe('Admin session UI', () => {
     expect(router.currentRoute.value.path).toBe('/login')
     expect(router.currentRoute.value.query.redirect).toBe('/status')
     expect(element.textContent).toContain('Sign in')
+  })
+
+  it('resumes OAuth authorization outside the SPA after restoring a session', async () => {
+    const navigateOutsideSpa = vi.fn()
+    const redirect =
+      '/api/mcp/oauth/authorize?response_type=code&client_id=https%3A%2F%2Fchatgpt.com%2Foauth%2Fclient.json'
+    const session = createAdminSession({
+      fetch: vi.fn<typeof fetch>().mockResolvedValue(authenticated()),
+      location: {
+        hash: '',
+        hostname: 'localhost',
+        pathname: '/login',
+        search: `?redirect=${encodeURIComponent(redirect)}`,
+      },
+      history: { replaceState: vi.fn() },
+    })
+    const router = createAdminRouter(
+      createMemoryHistory(),
+      session,
+      navigateOutsideSpa,
+    )
+
+    await router.push(`/login?redirect=${encodeURIComponent(redirect)}`)
+    expect(navigateOutsideSpa).toHaveBeenCalledWith(redirect)
   })
 
   it('does not render authenticated content while session resolution is pending', async () => {

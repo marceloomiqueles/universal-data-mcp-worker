@@ -63,8 +63,9 @@ async function parsedAuthorizationRequest(
   }
 }
 
-function consentPage(clientName: string): Response {
+function consentPage(clientName: string, redirectUri: string): Response {
   const safeClientName = htmlEscape(clientName)
+  const redirectOrigin = new URL(redirectUri).origin
   return new Response(
     `<!doctype html>
 <html lang="en">
@@ -77,8 +78,7 @@ function consentPage(clientName: string): Response {
     {
       headers: {
         'cache-control': 'no-store',
-        'content-security-policy':
-          "default-src 'none'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'",
+        'content-security-policy': `default-src 'none'; form-action 'self' ${redirectOrigin}; base-uri 'none'; frame-ancestors 'none'`,
         'content-type': 'text/html; charset=utf-8',
         'referrer-policy': 'no-referrer',
         'x-content-type-options': 'nosniff',
@@ -112,9 +112,12 @@ async function handleAuthorization(
     )
   }
 
+  const requestOrigin = request.headers.get('origin')
   if (
     request.method !== 'GET' &&
-    request.headers.get('origin') !== new URL(request.url).origin
+    requestOrigin &&
+    requestOrigin !== 'null' &&
+    requestOrigin !== new URL(request.url).origin
   ) {
     return new Response('The request origin is not allowed.', { status: 403 })
   }
@@ -127,7 +130,7 @@ async function handleAuthorization(
   if (!client) return new Response('Unknown OAuth client.', { status: 400 })
 
   if (request.method === 'GET') {
-    return consentPage(client.clientName ?? 'MCP client')
+    return consentPage(client.clientName ?? 'MCP client', parsed.redirectUri)
   }
 
   const form = await request.formData()
