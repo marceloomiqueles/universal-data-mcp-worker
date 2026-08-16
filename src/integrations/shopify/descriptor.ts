@@ -4,6 +4,7 @@ import { readShopifyStatus } from './connection'
 export const shopifyIntegrationDescriptor = {
   id: 'shopify',
   name: 'Shopify',
-  description: 'Shopify integration for product and inventory data.',
+  description:
+    'Shopify integration for product, inventory, and recent order sales data.',
   readStatus: readShopifyStatus,
 } satisfies IntegrationRegistration

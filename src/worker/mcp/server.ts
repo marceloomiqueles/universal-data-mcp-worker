@@ -4,6 +4,11 @@ import { z } from 'zod'
 
 import type { IntegrationRegistry } from '../../core/integrations/registry'
 import { queryShopifyInventory } from '../../integrations/shopify/inventory-query'
+import {
+  queryShopifySales,
+  queryShopifySalesPeriod,
+  ShopifySalesQueryError,
+} from '../../integrations/shopify/sales-query'
 
 const MAX_REQUEST_BYTES = 64 * 1024
 const REQUIRED_SCOPE = 'integrations:read'
@@ -203,6 +208,124 @@ export async function createMcpServer(
             nextCursor: inventory.nextCursor,
             lastSuccessfulSyncAt: inventory.lastSuccessfulSyncAt,
           },
+        }
+      },
+    )
+
+    const topProductSchema = z.object({
+      product: z.string(),
+      variant: z.string().nullable(),
+      sku: z.string().nullable(),
+      quantity: z.number().int(),
+      merchandiseSalesBeforeTax: z.string(),
+      currency: z.string(),
+    })
+    const salesOutputSchema = z.object({
+      period: z.object({
+        start: z.string().datetime(),
+        end: z.string().datetime(),
+      }),
+      timezone: z.string(),
+      orderCount: z.number().int().nonnegative(),
+      totalSales: z.string(),
+      averageOrderValue: z.string().nullable(),
+      currency: z.string(),
+      topProducts: z.array(topProductSchema).max(25),
+      lastSuccessfulOrderSync: z.string().datetime(),
+      coverage: z.object({
+        limitation: z.literal('recent_60_days_only'),
+        windowStart: z.string().datetime(),
+        windowEnd: z.string().datetime(),
+        complete: z.literal(true),
+      }),
+    })
+    const salesInputSchema = z
+      .object({
+        period: z
+          .enum(['today', 'yesterday', 'this_week', 'last_week', 'last_7_days'])
+          .optional(),
+        start: z.string().datetime().optional(),
+        end: z.string().datetime().optional(),
+        includeTopProducts: z.boolean().optional(),
+        topProductsLimit: z.number().int().min(1).max(25).optional(),
+      })
+      .strict()
+      .superRefine((input, context) => {
+        const explicit = input.start !== undefined || input.end !== undefined
+        if (
+          (input.period !== undefined && explicit) ||
+          (input.period === undefined &&
+            (input.start === undefined || input.end === undefined))
+        )
+          context.addIssue({
+            code: 'custom',
+            message: 'Provide either period or both start and end.',
+          })
+      })
+
+    server.registerTool(
+      'get_sales',
+      {
+        title: 'Get persisted Shopify sales',
+        description:
+          'Returns bounded sales aggregates from the last persisted Shopify order sync. Sales means the sum of current non-cancelled Shopify order totals after returns, including taxes and discounts; it is not accounting revenue. Average order value uses the same included orders. Optional top-product amounts are current merchandise sales after discounts but before tax, so they need not reconcile to order totals. Use a merchant-timezone period or explicit UTC start/end instants. Standard source coverage is limited to the recent 60 days, and this tool never queries Shopify live.',
+        inputSchema: salesInputSchema,
+        outputSchema: salesOutputSchema,
+        annotations: {
+          readOnlyHint: true,
+          destructiveHint: false,
+          openWorldHint: false,
+        },
+      },
+      async (input) => {
+        try {
+          const options = {
+            includeTopProducts: input.includeTopProducts,
+            topProductsLimit: input.topProductsLimit,
+          }
+          const sales = input.period
+            ? await queryShopifySalesPeriod(db, input.period, options)
+            : await queryShopifySales(db, {
+                start: input.start!,
+                end: input.end!,
+                ...options,
+              })
+          const structuredContent = {
+            period: sales.period,
+            timezone: sales.timezone,
+            orderCount: sales.orderCount,
+            totalSales: sales.totalSales,
+            averageOrderValue: sales.averageOrderValue,
+            currency: sales.currency,
+            topProducts: sales.topProducts,
+            lastSuccessfulOrderSync: sales.lastSuccessfulSyncAt,
+            coverage: sales.coverage,
+          }
+          return {
+            content: [
+              {
+                type: 'text',
+                text:
+                  sales.orderCount === 0
+                    ? `No non-cancelled orders were found in the covered period. Total sales: 0 ${sales.currency}. Last completed order sync: ${sales.lastSuccessfulSyncAt}.`
+                    : `Found ${sales.orderCount} non-cancelled order${sales.orderCount === 1 ? '' : 's'} totaling ${sales.totalSales} ${sales.currency}. Last completed order sync: ${sales.lastSuccessfulSyncAt}.`,
+              },
+            ],
+            structuredContent,
+          }
+        } catch (cause) {
+          const message =
+            cause instanceof ShopifySalesQueryError
+              ? cause.code === 'INVALID_RANGE'
+                ? 'The requested sales period is invalid or exceeds 60 days.'
+                : cause.code === 'MIXED_CURRENCY'
+                  ? 'The persisted sales data contains currencies that cannot be combined.'
+                  : 'The requested period is not covered by the latest complete order sync.'
+              : 'Sales data could not be queried.'
+          return {
+            isError: true,
+            content: [{ type: 'text', text: message }],
+          }
         }
       },
     )

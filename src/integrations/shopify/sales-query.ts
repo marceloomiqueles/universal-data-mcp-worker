@@ -216,6 +216,40 @@ export async function queryShopifySales(
   }
 }
 
+export async function queryShopifySalesPeriod(
+  db: D1Database,
+  period: ShopifySalesPeriod,
+  options: Pick<
+    ShopifySalesQuery,
+    'includeTopProducts' | 'topProductsLimit'
+  > = {},
+  now: number = Date.now(),
+): Promise<ShopifySalesResult> {
+  const run = await db
+    .prepare(
+      `SELECT shop_timezone, window_end FROM shopify_order_sync_runs
+       WHERE status = 'complete' AND coverage_complete = 1
+       ORDER BY completed_at DESC LIMIT 1`,
+    )
+    .first<{ shop_timezone: string | null; window_end: number }>()
+  if (!run?.shop_timezone)
+    throw new ShopifySalesQueryError('COVERAGE_UNAVAILABLE')
+  const resolved = resolveShopifySalesPeriod(period, now, run.shop_timezone)
+  const currentPeriod =
+    period === 'today' || period === 'this_week' || period === 'last_7_days'
+  const range = currentPeriod
+    ? {
+        start: resolved.start,
+        end: new Date(
+          Math.min(Date.parse(resolved.end), run.window_end),
+        ).toISOString(),
+      }
+    : resolved
+  if (Date.parse(range.start) >= Date.parse(range.end))
+    throw new ShopifySalesQueryError('COVERAGE_UNAVAILABLE')
+  return queryShopifySales(db, { ...range, ...options })
+}
+
 interface LocalDateTime {
   year: number
   month: number

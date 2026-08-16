@@ -11,6 +11,7 @@ import {
 import { parseShopifyMoney } from '../../src/integrations/shopify/money'
 import {
   queryShopifySales,
+  queryShopifySalesPeriod,
   resolveShopifySalesPeriod,
   ShopifySalesQueryError,
 } from '../../src/integrations/shopify/sales-query'
@@ -164,7 +165,8 @@ function orderFetcher(
     if (String(input).endsWith('/admin/oauth/access_token')) {
       return Response.json({
         access_token: 'transient-order-token',
-        scope: 'read_products,read_inventory,read_locations,read_orders',
+        scope:
+          'read_products,read_inventory,read_locations,read_orders,read_all_orders',
       })
     }
     const body = JSON.parse(String(init?.body)) as {
@@ -386,7 +388,8 @@ describe('Shopify order ingestion', () => {
       if (String(input).endsWith('/admin/oauth/access_token'))
         return Response.json({
           access_token: 'transient-order-token',
-          scope: 'read_products,read_inventory,read_locations,read_orders',
+          scope:
+            'read_products,read_inventory,read_locations,read_orders,read_all_orders',
         })
       reached()
       await blocked
@@ -558,6 +561,23 @@ describe('Shopify sales read model', () => {
     ).rejects.toMatchObject({
       code: 'COVERAGE_UNAVAILABLE',
     } satisfies Partial<ShopifySalesQueryError>)
+
+    await expect(
+      queryShopifySalesPeriod(
+        env.DB,
+        'today',
+        {},
+        Date.parse('2026-08-16T21:30:00Z'),
+      ),
+    ).resolves.toMatchObject({
+      period: {
+        start: '2026-08-16T04:00:00.000Z',
+        end: '2026-08-16T18:00:00.000Z',
+      },
+      orderCount: 0,
+      totalSales: '0',
+      lastSuccessfulSyncAt: '2026-08-16T18:00:01.000Z',
+    })
   })
 
   it('resolves merchant calendar boundaries across daylight saving time', () => {
