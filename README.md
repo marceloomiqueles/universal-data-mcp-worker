@@ -95,7 +95,9 @@ After setup, open the Admin Web normally and sign in with the owner username and
 
 The repository includes a Wrangler-based provisioning command validated against a real Cloudflare Workers and D1 installation. Creating the first owner remains an explicit browser action by the installing owner.
 
-The public README does not advertise a **Deploy to Cloudflare** button yet. That entry point is blocked until the complete installation implementation is merged into the public default branch and the button is validated from that branch in a clean Cloudflare installation. A redirect to Cloudflare's dashboard alone is not validation.
+[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/marceloomiqueles/universal-data-mcp-worker)
+
+The button targets the public default branch. Its D1 automatic-provisioning correction is published, but the complete clean-account flow is still **not yet validated**. A redirect to Cloudflare's dashboard alone is not installation evidence.
 
 Cloudflare's native button can provision D1 and request a Worker secret, but it cannot generate the bootstrap proof and securely return the matching first-owner URL. When the button is enabled, the remaining owner interaction will be documented as a copy/paste flow rather than called one-click: generate one 43-character URL-safe value with a password manager, paste it once into Cloudflare's `OWNER_SETUP_TOKEN` field, retain it until deployment completes, and copy it into the clearly labeled setup-link placeholder supplied by the instructions. The user will not need to understand D1, bindings, Wrangler, migrations, or URL-fragment terminology.
 
@@ -119,7 +121,7 @@ pnpm provision:cloudflare -- --database-name=my-installation-db
 
 Do not change the database name after an installation is bound. See the [self-hosted provisioning runbook](docs/runbooks/cloudflare-self-hosted-installation.md) for behavior, security constraints, and validation evidence.
 
-Installation evidence is tracked separately: local installation is validated; the CLI provisioner is implemented and validated against real Cloudflare; defensive re-run behavior is covered by regression tests but has not been exercised against a disposable remote custom domain; and the public Deploy to Cloudflare path is not yet clean-account validated.
+Installation evidence is tracked separately: local installation is validated; the CLI provisioner is implemented and validated against real Cloudflare; defensive re-run behavior is covered by regression tests but has not been exercised against a disposable remote custom domain; and the public Deploy to Cloudflare button is available but not yet clean-account validated.
 
 ### Current configuration
 
