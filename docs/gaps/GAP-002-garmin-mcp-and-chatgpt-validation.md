@@ -22,6 +22,10 @@ Shared MCP runtime and slice ownership are decided. Useful tools depend on real 
 - End-to-end ChatGPT MCP validation.
 - Reproducible protocol incompatibilities.
 
+## Evidence Collected
+
+The minimal shared runtime now implements stable MCP `2025-11-25` Streamable HTTP with the official TypeScript SDK's Web-standard transport. OAuth 2.1 authorization-code flow with PKCE is separate from the Admin cookie and is provided by Cloudflare's standard Worker OAuth package. Production-path workerd tests validate initialization, discovery, `list_integrations`, empty results, OAuth discovery/authorization/token/revocation, and route isolation. This evidence selects the initial runtime mechanism but does not validate ChatGPT itself or define future Garmin data tools.
+
 ## Constraint While Open
 
-Do not document tools, ChatGPT adapters, or output schemas as final contracts.
+Do not document future Garmin tools, ChatGPT adapters, or data output schemas as final contracts. `list_integrations` is the bounded connectivity tool established by the first MCP slice.

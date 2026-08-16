@@ -3,6 +3,8 @@ declare global {
     interface Env {
       DB: D1Database
       LOGIN_RATE_LIMITER: RateLimit
+      MCP_OAUTH_RATE_LIMITER: RateLimit
+      OAUTH_KV: KVNamespace
       OWNER_SETUP_TOKEN: string
       TEST_MIGRATIONS: D1Migration[]
     }

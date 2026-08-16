@@ -19,6 +19,7 @@ export interface AuthEnv {
   DB: D1Database
   LOGIN_RATE_LIMITER: RateLimit
   OWNER_SETUP_TOKEN?: string
+  OAUTH_PROVIDER?: OAuthHelpers
 }
 
 interface OwnerRecord {
@@ -31,6 +32,10 @@ interface OwnerRecord {
 interface SessionRecord {
   username: string
   expires_at: number
+}
+
+export interface AuthenticatedOwner {
+  readonly username: string
 }
 
 interface Credentials {
@@ -224,6 +229,15 @@ async function validateSession(
   return session
 }
 
+export async function authenticatedOwner(
+  request: Request,
+  env: AuthEnv,
+  now = Date.now(),
+): Promise<AuthenticatedOwner | null> {
+  const session = await validateSession(request, env.DB, now)
+  return session ? { username: session.username } : null
+}
+
 async function setupStatus(env: AuthEnv): Promise<Response> {
   const owner = await getOwner(env.DB)
   return json({
@@ -405,6 +419,43 @@ async function logout(request: Request, env: AuthEnv): Promise<Response> {
   })
 }
 
+async function mcpGrantStatus(env: AuthEnv): Promise<Response> {
+  if (!env.OAUTH_PROVIDER) {
+    return error('OAUTH_UNAVAILABLE', 'MCP authorization is unavailable.', 503)
+  }
+  const grants = await env.OAUTH_PROVIDER.listUserGrants('owner-1', {
+    limit: 100,
+  })
+  return json({ connected: grants.items.length > 0 })
+}
+
+async function revokeMcpGrants(
+  request: Request,
+  env: AuthEnv,
+): Promise<Response> {
+  const originError = validateOrigin(request)
+  if (originError) return originError
+  if (!env.OAUTH_PROVIDER) {
+    return error('OAUTH_UNAVAILABLE', 'MCP authorization is unavailable.', 503)
+  }
+
+  let cursor: string | undefined
+  let revoked = 0
+  do {
+    const grants = await env.OAUTH_PROVIDER.listUserGrants('owner-1', {
+      limit: 100,
+      cursor,
+    })
+    for (const grant of grants.items) {
+      await env.OAUTH_PROVIDER.revokeGrant(grant.id, 'owner-1')
+      revoked += 1
+    }
+    cursor = grants.cursor
+  } while (cursor)
+
+  return json({ revoked })
+}
+
 export async function handleAdminApi(
   request: Request,
   env: AuthEnv,
@@ -442,6 +493,12 @@ export async function handleAdminApi(
     if (pathname === '/api/integrations' && method === 'GET') {
       return listIntegrations(registry)
     }
+    if (pathname === '/api/mcp/oauth/grants' && method === 'GET') {
+      return mcpGrantStatus(env)
+    }
+    if (pathname === '/api/mcp/oauth/revoke' && method === 'POST') {
+      return revokeMcpGrants(request, env)
+    }
 
     return json({ boundary: 'admin-api', status: 'not-implemented' }, 501)
   } catch (cause) {
@@ -453,3 +510,4 @@ export async function handleAdminApi(
     return error('INTERNAL_ERROR', 'The request could not be completed.', 500)
   }
 }
+import type { OAuthHelpers } from '@cloudflare/workers-oauth-provider'

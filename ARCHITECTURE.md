@@ -58,7 +58,7 @@ Cloudflare Worker / deployment
 └── D1 where appropriate
 ```
 
-Exact paths, router, and internal code structure are implementation gaps. Additional Workers, Queues, Durable Objects, KV, R2, and external services have not been justified.
+Exact future product paths and internal structures remain implementation-driven. One KV namespace is now justified for the standard Cloudflare OAuth provider that protects MCP; additional Workers, Queues, Durable Objects, KV namespaces, R2, and external services remain unjustified.
 
 Installation provisioning is outside the application runtime. Project-owned tooling authenticates through Wrangler to create or bind D1, apply migrations, configure Worker secrets, and deploy. Runtime code receives only logical bindings such as `env.DB`; it does not receive Cloudflare management credentials or depend on resource IDs. The Wrangler provisioning path has been validated against a real Cloudflare installation.
 
@@ -100,7 +100,7 @@ The architecture separates:
 
 The shared runtime does not know Garmin. Only active integrations expose capabilities. Tools minimize data and answer bounded queries rather than returning massive dumps.
 
-ChatGPT is the first supported and validated client. No client-specific adapter is assumed while standard MCP is sufficient. Real client behavior must be validated.
+The initial shared runtime uses stable MCP `2025-11-25` Streamable HTTP and exposes one bounded read-only registry tool. MCP clients authenticate separately from the Admin browser session through OAuth 2.1 authorization code with PKCE; the existing owner supplies identity and consent, while provider-managed OAuth state lives in KV. ChatGPT is the first intended client. No client-specific adapter is assumed while standard MCP is sufficient, and real ChatGPT behavior remains unvalidated.
 
 ## Persistence
 

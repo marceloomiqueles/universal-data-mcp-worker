@@ -3,6 +3,7 @@
   "name": "universal-data-mcp-worker",
   "main": "./src/worker/index.ts",
   "compatibility_date": "2026-08-15",
+  "compatibility_flags": ["global_fetch_strictly_public"],
   "workers_dev": true,
   "ratelimits": [
     {
@@ -12,6 +13,19 @@
         "limit": 5,
         "period": 60,
       },
+    },
+    {
+      "name": "MCP_OAUTH_RATE_LIMITER",
+      "namespace_id": "1001002",
+      "simple": {
+        "limit": 30,
+        "period": 60,
+      },
+    },
+  ],
+  "kv_namespaces": [
+    {
+      "binding": "OAUTH_KV",
     },
   ],
   "d1_databases": [
@@ -25,6 +39,15 @@
     "directory": "./dist/client",
     "binding": "ASSETS",
     "not_found_handling": "single-page-application",
-    "run_worker_first": ["/api", "/api/*", "/mcp", "/mcp/*"],
+    "run_worker_first": [
+      "/api",
+      "/api/*",
+      "/mcp",
+      "/mcp/*",
+      "/oauth/*",
+      "/.well-known/oauth-authorization-server",
+      "/.well-known/oauth-protected-resource",
+      "/.well-known/oauth-protected-resource/*",
+    ],
   },
 }

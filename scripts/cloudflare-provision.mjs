@@ -68,34 +68,47 @@ export function rateLimitNamespace(databaseId) {
   return String(value || 1)
 }
 
+export function mcpOAuthRateLimitNamespace(databaseId) {
+  const value = createHash('sha256')
+    .update(`${databaseId}:mcp-oauth`)
+    .digest()
+    .readUIntBE(0, 6)
+  return String(value || 1)
+}
+
 function updateSectionProperty(source, section, binding, property, value) {
   const sectionPattern = new RegExp(
-    `("${section}"\\s*:\\s*\\[\\s*\\{)([\\s\\S]*?)(\\}\\s*,?\\s*\\])`,
+    `("${section}"\\s*:\\s*\\[)([\\s\\S]*?)(\\])`,
     'u',
   )
   const sectionMatch = source.match(sectionPattern)
   if (!sectionMatch || !sectionMatch[2]) {
     throw new Error(`Could not find the ${section} configuration section.`)
   }
-  if (
-    !new RegExp(`"(?:binding|name)"\\s*:\\s*"${binding}"`, 'u').test(
-      sectionMatch[2],
-    )
-  ) {
+  const objectPattern = /\{[\s\S]*?\}/gu
+  const bindingPattern = new RegExp(
+    `"(?:binding|name)"\\s*:\\s*"${binding}"`,
+    'u',
+  )
+  const object = sectionMatch[2]
+    .match(objectPattern)
+    ?.find((candidate) => bindingPattern.test(candidate))
+  if (!object) {
     throw new Error(
       `Could not find ${binding} in the ${section} configuration section.`,
     )
   }
 
   const propertyPattern = new RegExp(`("${property}"\\s*:\\s*)"[^"]*"`, 'u')
-  if (!propertyPattern.test(sectionMatch[2])) {
+  if (!propertyPattern.test(object)) {
     throw new Error(`Could not find ${property} for ${binding}.`)
   }
 
-  const updatedBody = sectionMatch[2].replace(
+  const updatedObject = object.replace(
     propertyPattern,
     `$1${JSON.stringify(value)}`,
   )
+  const updatedBody = sectionMatch[2].replace(object, updatedObject)
   return source.replace(sectionPattern, `$1${updatedBody}$3`)
 }
 
@@ -108,12 +121,19 @@ export function updateProvisioningConfig(source, database) {
     database.name,
   )
   updated = setDatabaseId(updated, database.uuid)
-  return updateSectionProperty(
+  updated = updateSectionProperty(
     updated,
     'ratelimits',
     'LOGIN_RATE_LIMITER',
     'namespace_id',
     rateLimitNamespace(database.uuid),
+  )
+  return updateSectionProperty(
+    updated,
+    'ratelimits',
+    'MCP_OAUTH_RATE_LIMITER',
+    'namespace_id',
+    mcpOAuthRateLimitNamespace(database.uuid),
   )
 }
 
@@ -250,7 +270,7 @@ async function ensureDatabase(requestedName, configuredId, template) {
 
   const updated = regenerateProvisioningConfig(template, database)
   await writeFile(deploymentConfigPath, updated, { mode: 0o600 })
-  console.log('Updated the DB binding and installation rate-limit namespace.')
+  console.log('Updated the DB binding and installation rate-limit namespaces.')
   return database
 }
 

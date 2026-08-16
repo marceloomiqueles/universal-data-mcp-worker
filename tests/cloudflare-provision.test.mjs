@@ -7,6 +7,7 @@ import {
   configuredDatabaseName,
   deploymentArguments,
   deploymentUrl,
+  mcpOAuthRateLimitNamespace,
   rateLimitNamespace,
   regenerateProvisioningConfig,
   selectDatabase,
@@ -18,6 +19,10 @@ const draftConfig = `{
     {
       "name": "LOGIN_RATE_LIMITER",
       "namespace_id": "1001001"
+    },
+    {
+      "name": "MCP_OAUTH_RATE_LIMITER",
+      "namespace_id": "1001002"
     }
   ],
   "d1_databases": [
@@ -57,9 +62,17 @@ describe('Cloudflare provisioning configuration', () => {
     assert.equal(configuredDatabaseName(updated), database.name)
     assert.match(updated, /"binding": "DB"/u)
     assert.match(updated, /"name": "LOGIN_RATE_LIMITER"/u)
+    assert.match(updated, /"name": "MCP_OAUTH_RATE_LIMITER"/u)
     assert.match(
       updated,
       new RegExp(`"namespace_id": "${rateLimitNamespace(database.uuid)}"`, 'u'),
+    )
+    assert.match(
+      updated,
+      new RegExp(
+        `"namespace_id": "${mcpOAuthRateLimitNamespace(database.uuid)}"`,
+        'u',
+      ),
     )
   })
 
@@ -68,6 +81,20 @@ describe('Cloudflare provisioning configuration', () => {
 
     assert.equal(configuredDatabaseId(source), undefined)
     assert.doesNotMatch(source, /00000000-0000-0000-0000-000000000000/u)
+  })
+
+  it('routes OAuth and MCP protocol endpoints through the Worker before SPA assets', async () => {
+    const source = await readFile('wrangler.jsonc', 'utf8')
+
+    for (const path of [
+      '/mcp',
+      '/mcp/*',
+      '/oauth/*',
+      '/.well-known/oauth-authorization-server',
+      '/.well-known/oauth-protected-resource/*',
+    ]) {
+      assert.ok(source.includes(JSON.stringify(path)))
+    }
   })
 
   it('deploys defensively without treating a stale generated snapshot as authority', () => {
@@ -109,6 +136,7 @@ describe('Cloudflare provisioning configuration', () => {
     assert.match(first, /^[1-9][0-9]*$/u)
     assert.equal(first, rateLimitNamespace('first-database-id'))
     assert.notEqual(first, rateLimitNamespace('second-database-id'))
+    assert.notEqual(first, mcpOAuthRateLimitNamespace('first-database-id'))
   })
 
   it('reuses a configured database by ID', () => {

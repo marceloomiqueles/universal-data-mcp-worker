@@ -15,7 +15,7 @@ The installing owner must still complete account creation in their browser; the 
 
 Provision one self-hosted installation without manually editing D1 IDs, running SQL, generating a bootstrap proof, or constructing its setup URL.
 
-Provisioning owns Cloudflare management operations. The deployed Worker consumes only the logical `DB`, `LOGIN_RATE_LIMITER`, and `OWNER_SETUP_TOKEN` bindings.
+Provisioning owns Cloudflare management operations. The deployed Worker consumes logical `DB`, `OAUTH_KV`, `LOGIN_RATE_LIMITER`, `MCP_OAUTH_RATE_LIMITER`, and `OWNER_SETUP_TOKEN` bindings.
 
 ## Normal path
 
@@ -78,7 +78,7 @@ The command:
 
 1. verifies Wrangler authentication;
 2. creates or reuses D1 database `universal-data-mcp-worker`;
-3. regenerates ignored `.wrangler.production.jsonc` from committed configuration with the non-secret database ID and a stable, installation-specific rate-limit namespace, leaving the committed template account-neutral;
+3. regenerates ignored `.wrangler.production.jsonc` from committed configuration with the non-secret database ID and stable, installation-specific login and OAuth rate-limit namespaces, leaving the committed template account-neutral; Wrangler provisions the `OAUTH_KV` namespace from its logical binding;
 4. builds the application;
 5. applies pending migrations through binding `DB` with `--remote`;
 6. generates a 256-bit bootstrap proof when setup requires one;
@@ -119,7 +119,7 @@ Do not change the name after `.wrangler.production.jsonc` contains a real databa
 
 ### Configuration ownership
 
-The installer owns the Worker code version, static-assets configuration, logical D1 `DB` binding, `LOGIN_RATE_LIMITER` binding, `OWNER_SETUP_TOKEN` upload when setup is incomplete, and migration execution. It does not own unrelated custom domains/routes, dashboard-managed variables, or other remote settings introduced outside the installer.
+The installer owns the Worker code version, static-assets configuration, logical D1 `DB` binding, OAuth `OAUTH_KV` binding, the two project rate-limit bindings, `OWNER_SETUP_TOKEN` upload when setup is incomplete, and migration execution. It does not own unrelated custom domains/routes, dashboard-managed variables, or other remote settings introduced outside the installer.
 
 The ignored deployment file is a cache of installer-owned D1 identity, not authoritative Worker configuration. Each run reads only that D1 identity, regenerates the file from committed `wrangler.jsonc`, and uses Wrangler strict mode. If the regenerated installer configuration conflicts with remote settings, Wrangler stops rather than silently changing them. `--keep-vars` separately preserves dashboard-managed variables. Resolve the reported ownership/configuration conflict explicitly; do not bypass strict mode.
 
@@ -151,7 +151,7 @@ After owner creation, the backend permanently refuses replacement even if the pr
 
 The provisioning configuration explicitly enables the HTTPS-capable `workers.dev` route. The provisioner emits only an `https://` setup URL, verifies the HTTPS setup-status request, and requires insecure HTTP to redirect to HTTPS or return the application's `426 HTTPS_REQUIRED` response.
 
-`LOGIN_RATE_LIMITER` remains the single accepted abuse-control mechanism. Provisioning derives its positive integer namespace from the D1 installation ID so different installations in one account do not intentionally share counters. A successful Wrangler deploy validated that Cloudflare accepts the binding configuration; threshold behavior remains covered by Worker tests rather than a deliberate production lockout test.
+`LOGIN_RATE_LIMITER` bounds password verification, while `MCP_OAUTH_RATE_LIMITER` separately bounds public OAuth registration, token, and authorization traffic. Provisioning derives distinct positive integer namespaces from the D1 installation ID so different installations and concerns do not intentionally share counters. Threshold behavior remains covered by Worker tests rather than deliberate production lockout tests; the new OAuth binding and KV still require deployed validation.
 
 ## Failure behavior
 
