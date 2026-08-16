@@ -175,6 +175,27 @@ function shopifySync(
   }
 }
 
+function shopifyOrderSync(
+  status: 'complete' | 'partial' | 'failed',
+  overrides: Record<string, unknown> = {},
+) {
+  return {
+    status,
+    coverageComplete: status === 'complete',
+    continuationAvailable: status === 'partial',
+    sourceCoverage: 'recent_60_days_only',
+    windowStart: '2026-06-17T18:00:00.000Z',
+    windowEnd: '2026-08-16T18:00:00.000Z',
+    shopTimezone: 'America/Santiago',
+    currency: 'CLP',
+    startedAt: '2026-08-16T18:00:00.000Z',
+    completedAt: '2026-08-16T18:01:00.000Z',
+    lastErrorCode: status === 'failed' ? 'SOURCE_UNAVAILABLE' : null,
+    counts: { requests: 2, pages: 1, orders: 1, lineItems: 2 },
+    ...overrides,
+  }
+}
+
 function integrationList(
   shopifyStatus:
     | 'not_configured'
@@ -833,6 +854,130 @@ describe('Integrations page', () => {
     )
     expect(document.body.textContent).toContain('Last successful sync: Never')
     expect(button('Sync now')).toBeDefined()
+    expect(document.body.textContent).toContain(
+      'Orders have never been synchronized.',
+    )
+    expect(document.body.textContent).toContain('recent 60-day window')
+    expect(document.body.textContent).toContain(
+      'read_all_orders scope permits older orders',
+    )
+    expect(button('Sync orders now')).toBeDefined()
+  })
+
+  it('explains unavailable order access when required scopes are missing', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn<typeof fetch>(async (input, init) => {
+        if (input === '/api/integrations')
+          return json(integrationList('connection_error'))
+        if (input === '/api/integrations/shopify' && !init?.method)
+          return json(
+            shopifyState('connection_error', {
+              lastErrorCode: 'SCOPE_FAILED',
+            }),
+          )
+        throw new Error(`Unexpected request: ${String(input)}`)
+      }),
+    )
+    await render({ path: '/integrations', responses: [authenticated()] })
+    await vi.waitFor(() => expect(button('Manage')).toBeDefined())
+    button('Manage')?.click()
+    await vi.waitFor(() =>
+      expect(document.body.textContent).toContain(
+        'Order data is unavailable until the Shopify app grants all required read-only order scopes.',
+      ),
+    )
+    expect(button('Sync orders now')).toBeUndefined()
+  })
+
+  it('prevents duplicate order sync and renders complete operational state', async () => {
+    let release!: (response: Response) => void
+    const pending = new Promise<Response>((resolve) => {
+      release = resolve
+    })
+    let calls = 0
+    vi.stubGlobal(
+      'fetch',
+      vi.fn<typeof fetch>(async (input, init) => {
+        if (input === '/api/integrations')
+          return json(integrationList('connected'))
+        if (input === '/api/integrations/shopify' && !init?.method)
+          return json(shopifyState('connected', { orderSync: null }))
+        if (input === '/api/integrations/shopify/orders/sync') {
+          calls += 1
+          return pending
+        }
+        throw new Error(`Unexpected request: ${String(input)}`)
+      }),
+    )
+    await render({ path: '/integrations', responses: [authenticated()] })
+    await vi.waitFor(() => expect(button('Manage')).toBeDefined())
+    button('Manage')?.click()
+    await vi.waitFor(() => expect(button('Sync orders now')).toBeDefined())
+    const syncButton = document.body.querySelector<HTMLButtonElement>(
+      '[data-testid="shopify-orders-sync-now"]',
+    )!
+    syncButton.click()
+    syncButton.click()
+    await vi.waitFor(() => expect(calls).toBe(1))
+    expect(syncButton.disabled).toBe(true)
+
+    release(json({ sync: shopifyOrderSync('complete') }))
+    await vi.waitFor(() =>
+      expect(document.body.textContent).toContain(
+        'Order synchronization completed.',
+      ),
+    )
+    expect(document.body.textContent).toContain('Latest order sync outcome')
+    expect(document.body.textContent).toContain('Orders: 1')
+    expect(document.body.textContent).toContain('Line items: 2')
+    expect(document.body.textContent).toContain('Last order sync')
+    expect(document.body.textContent).not.toContain(
+      'Stored order coverage is incomplete.',
+    )
+  })
+
+  it('reports partial and failed order sync without claiming full coverage', async () => {
+    const outcomes = [
+      json({ sync: shopifyOrderSync('partial') }),
+      json({ sync: shopifyOrderSync('failed') }, 502),
+    ]
+    vi.stubGlobal(
+      'fetch',
+      vi.fn<typeof fetch>(async (input, init) => {
+        if (input === '/api/integrations')
+          return json(integrationList('connected'))
+        if (input === '/api/integrations/shopify' && !init?.method)
+          return json(shopifyState('connected', { orderSync: null }))
+        if (input === '/api/integrations/shopify/orders/sync')
+          return outcomes.shift()!
+        throw new Error(`Unexpected request: ${String(input)}`)
+      }),
+    )
+    await render({ path: '/integrations', responses: [authenticated()] })
+    await vi.waitFor(() => expect(button('Manage')).toBeDefined())
+    button('Manage')?.click()
+    await vi.waitFor(() => expect(button('Sync orders now')).toBeDefined())
+
+    button('Sync orders now')?.click()
+    await vi.waitFor(() =>
+      expect(document.body.textContent).toContain(
+        'Order synchronization is partial.',
+      ),
+    )
+    expect(document.body.textContent).toContain(
+      'Stored order coverage is incomplete.',
+    )
+
+    button('Sync orders now')?.click()
+    await vi.waitFor(() =>
+      expect(document.body.textContent).toContain(
+        'Order synchronization failed.',
+      ),
+    )
+    expect(document.body.textContent).toContain(
+      'Existing stored order data was preserved.',
+    )
   })
 
   it('does not expose synchronization for disconnected Shopify', async () => {
@@ -850,6 +995,7 @@ describe('Integrations page', () => {
     button('Configure')?.click()
     await settle()
     expect(button('Sync now')).toBeUndefined()
+    expect(button('Sync orders now')).toBeUndefined()
   })
 
   it('prevents duplicate sync submission and renders successful counts and freshness', async () => {
