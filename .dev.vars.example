@@ -1,3 +1,4 @@
 # Temporary proof used only to authorize first-owner creation.
-# Run `pnpm setup:local` to create a real ignored `.dev.vars` safely.
+# Do not fill this example manually. Run `pnpm setup:local` to generate `.dev.vars` safely.
+# Cloudflare's Deploy flow requests the production value in its protected secret form.
 OWNER_SETUP_TOKEN=""

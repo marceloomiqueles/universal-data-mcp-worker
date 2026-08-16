@@ -61,22 +61,25 @@ Requirements:
 - Node.js 22.13 or newer;
 - pnpm 11.22.0 or a compatible pnpm 11 release.
 
-Install dependencies, create an ignored local bootstrap secret, apply the local D1 migration, and start the Cloudflare/Vite development environment:
+Install dependencies, prepare local configuration and D1, and start the Cloudflare/Vite development environment:
 
 ```sh
 pnpm install
 pnpm setup:local
-pnpm exec wrangler d1 migrations apply DB --local
 pnpm dev
 ```
 
-`pnpm setup:local` uses Node's cryptographically secure random generator to create `.dev.vars` with mode `0600`. It refuses to overwrite an existing file and prints the authorized first-run URL:
+`pnpm setup:local` performs the complete non-destructive local preparation:
+
+1. it uses Node's cryptographically secure random generator to create a 256-bit bootstrap proof in `.dev.vars` with mode `0600`, or preserves an existing valid file;
+2. it applies every pending migration to the local D1 database through the `DB` binding;
+3. after migrations succeed, it prints the authorized first-run URL:
 
 ```text
 http://localhost:5173/login#bootstrap=<generated-proof>
 ```
 
-If the development server is already running or the URL is needed again, print it deterministically from the configured secret:
+The command is safe to repeat: Wrangler applies only pending migrations, the existing proof is not replaced, and existing owner/session rows are preserved. If `.dev.vars` exists but lacks a valid proof, setup stops without modifying the file. If the development server is already running or the URL is needed again, print it deterministically from the configured secret:
 
 ```sh
 pnpm setup:url
@@ -84,25 +87,47 @@ pnpm setup:url
 
 Open that URL, choose the owner username and a password of at least 12 characters, confirm it, and select **Create account**. The URL fragment is not sent while loading the SPA. The SPA removes it immediately, keeps the proof only in memory, and submits it separately from account data. The browser receives an `HttpOnly` session cookie and opens the authenticated Admin shell.
 
-The committed [`.dev.vars.example`](.dev.vars.example) lists the required local secret without providing a usable value. Actual `.dev.vars` files are ignored. The backend accepts the proof only while no owner exists. After setup, the proof can and should be removed from local or production secret configuration; use `pnpm setup:url` before removing it if the authorized URL is still needed.
+The committed [`.dev.vars.example`](.dev.vars.example) uses Cloudflare's official local-secret convention and lists the required name without providing a usable value. Actual `.dev.vars` files are ignored. The backend accepts the proof only while no owner exists. If an owner already exists, rerunning local setup preserves that owner and the normal `/login` flow remains authoritative. After first-owner setup, the proof can be removed from local configuration; retain it only when a later explicit local auth reset is expected.
 
 After setup, open the Admin Web normally and sign in with the owner username and password. Use **Sign out** in the application bar to invalidate the current session. See [TESTING.md](TESTING.md) for the validated API and UI behavior.
 
-There is no end-user deployment guide because production deployment and the complete product flow have not been validated. A real Cloudflare deployment must replace the placeholder D1 identifier, apply migrations, generate one high-entropy proof, configure it with `pnpm exec wrangler secret put OWNER_SETUP_TOKEN`, and provide the owner with `https://<deployment>/login#bootstrap=<proof>`. Generate a suitable value with the tested command below; do not invent one manually or put it in a query string, `VITE_*` variable, or ordinary Wrangler variable.
+## Self-hosted Cloudflare provisioning
+
+The repository includes a Wrangler-based provisioning command validated against a real Cloudflare Workers and D1 installation. Creating the first owner remains an explicit browser action by the installing owner.
+
+The public README does not advertise a **Deploy to Cloudflare** button yet. That entry point is blocked until the complete installation implementation is merged into the public default branch and the button is validated from that branch in a clean Cloudflare installation. A redirect to Cloudflare's dashboard alone is not validation.
+
+Cloudflare's native button can provision D1 and request a Worker secret, but it cannot generate the bootstrap proof and securely return the matching first-owner URL. When the button is enabled, the remaining owner interaction will be documented as a copy/paste flow rather than called one-click: generate one 43-character URL-safe value with a password manager, paste it once into Cloudflare's `OWNER_SETUP_TOKEN` field, retain it until deployment completes, and copy it into the clearly labeled setup-link placeholder supplied by the instructions. The user will not need to understand D1, bindings, Wrangler, migrations, or URL-fragment terminology.
+
+The validated command-line path remains:
 
 ```sh
-node --input-type=module -e "import { randomBytes } from 'node:crypto'; console.log(randomBytes(32).toString('base64url'))"
+pnpm install
+pnpm exec wrangler login
+pnpm provision:cloudflare
 ```
 
-Non-loopback Admin API traffic is rejected unless it uses HTTPS. Cloudflare's edge must also be configured to redirect visitor HTTP traffic to HTTPS before production use. This configuration has not been validated on a deployed instance. Automated generation and presentation of the production setup link remain deployment gaps.
+The provisioner authenticates through Wrangler, creates or reuses the deterministically named D1 database, writes its non-secret ID into ignored `.wrangler.production.jsonc`, configures a per-installation rate-limit namespace, builds the application, applies pending remote migrations, generates the temporary owner bootstrap proof, uploads it with `wrangler deploy --strict --keep-vars --secrets-file`, validates the HTTPS Admin API surface, and prints the authorized first-owner URL. Every run regenerates the deployment file from committed `wrangler.jsonc` and carries forward only installer-owned D1 identity. Wrangler strict mode stops on conflicting remote settings instead of silently removing dashboard-managed routes or domains, while `--keep-vars` preserves dashboard-managed variables. The committed `wrangler.jsonc` intentionally retains a draft zero UUID so account-specific IDs never enter Git.
+
+The application runtime receives only the logical `DB`, `LOGIN_RATE_LIMITER`, and `OWNER_SETUP_TOKEN` bindings. It never receives Cloudflare account-management credentials or uses a D1 resource ID directly.
+
+Rerunning provisioning reuses a configured D1 database and applies only pending migrations. It never deletes the owner, sessions, Worker, or database. If remote Worker configuration differs materially from the installer-owned configuration, provisioning fails closed before Wrangler applies the code deployment; it does not silently adopt or delete unrelated routes, domains, or settings. If owner setup is incomplete, it rotates the temporary proof explicitly and prints the replacement URL. If the owner exists, it prints the normal login URL. A different database name is an advanced first-install option:
+
+```sh
+pnpm provision:cloudflare -- --database-name=my-installation-db
+```
+
+Do not change the database name after an installation is bound. See the [self-hosted provisioning runbook](docs/runbooks/cloudflare-self-hosted-installation.md) for behavior, security constraints, and validation evidence.
+
+Installation evidence is tracked separately: local installation is validated; the CLI provisioner is implemented and validated against real Cloudflare; defensive re-run behavior is covered by regression tests but has not been exercised against a disposable remote custom domain; and the public Deploy to Cloudflare path is not yet clean-account validated.
 
 ### Current configuration
 
 | Name | Purpose | Classification | Requirement | Local development | Production |
 |---|---|---|---|---|---|
-| `OWNER_SETUP_TOKEN` | Authorizes only the first owner creation | Secret | Required until the owner exists | Ignored `.dev.vars`; create with `pnpm setup:local` | Cloudflare secret via `wrangler secret put`; remove after setup |
+| `OWNER_SETUP_TOKEN` | Authorizes only the first owner creation | Secret | Required until the owner exists | Ignored `.dev.vars`; create with `pnpm setup:local` | Generated by `provision:cloudflare` and uploaded through a temporary `--secrets-file`; remove after setup when operationally convenient |
 | `DB` | Stores the singleton owner verifier and revocable session digests | D1 binding, not a secret | Required | Declared in `wrangler.jsonc`; local state persists under ignored `.wrangler/` | Bind to the deployment's real D1 database |
-| `LOGIN_RATE_LIMITER` | Limits repeated login work per Cloudflare source address | Rate Limiting binding, not a secret | Required | Declared in `wrangler.jsonc` and emulated by the local runtime | Declared in `wrangler.jsonc`; verify on the deployed Worker |
+| `LOGIN_RATE_LIMITER` | Limits repeated login work per Cloudflare source address | Rate Limiting binding, not a secret | Required | Declared in `wrangler.jsonc` and emulated by the local runtime | Provisioner derives a stable namespace from the installation D1 ID; Cloudflare accepted the deployed binding |
 
 ### Reset local owner authentication
 

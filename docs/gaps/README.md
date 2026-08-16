@@ -21,6 +21,7 @@ Each gap states what is unknown, why it can wait, and what evidence can close it
 | [GAP-011](GAP-011-trademark-strategy.md) | Project trademark strategy | Open — non-blocking |
 | [GAP-012](GAP-012-copyright-provenance.md) | Historical copyright and provenance evidence | Open before external merges |
 | [GAP-013](GAP-013-auditable-cla-acceptance.md) | Auditable CLA acceptance and enforcement | Open — external merge blocker |
+| [GAP-014](GAP-014-self-hosted-upgrades.md) | Self-hosted upgrade flow | Open |
 
 ## Out of Scope, Not a Gap
 
