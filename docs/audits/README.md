@@ -10,6 +10,7 @@ Audits record verified repository state at a point in time. They are not target 
 - [Legal and contribution provenance audit — 2026-08-15](2026-08-15-legal-and-contribution-provenance-audit.md)
 - [Pre-scaffolding technical audit — 2026-08-15](2026-08-15-pre-scaffolding-technical-audit.md)
 - [Minimal MCP and ChatGPT hardening validation — 2026-08-16](2026-08-16-minimal-mcp-chatgpt-hardening-validation.md)
+- [Shopify inventory MVP hardening validation — 2026-08-16](2026-08-16-shopify-inventory-mvp-hardening-validation.md)
 - [Shopify Spike 0 validation — 2026-08-16](2026-08-16-shopify-spike-0-validation.md)
 
 Future audits preserve earlier reports and distinguish observed state from later remediation.

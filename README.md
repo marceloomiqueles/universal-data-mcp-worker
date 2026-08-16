@@ -8,7 +8,7 @@ Garmin Connect → Cloudflare Worker → D1 where appropriate → MCP → ChatGP
 
 ## Current Status
 
-The project has an initial deployable scaffold, single-owner Admin authentication, a compiled integration registry, and a minimal read-only MCP server. One Cloudflare Worker serves the Vue/Vuetify Admin SPA, authenticated Admin API, and an OAuth-protected MCP 2025-11-25 Streamable HTTP endpoint. The `list_integrations` tool reports the real compiled registry. Garmin remains registered but not configured; Shopify can be configured and verified through the Admin Web with encrypted server-side credentials, but catalog ingestion is not implemented.
+The project has an initial deployable scaffold, single-owner Admin authentication, a compiled integration registry, and a read-only MCP server. One Cloudflare Worker serves the Vue/Vuetify Admin SPA, authenticated Admin API, and an OAuth-protected MCP 2025-11-25 Streamable HTTP endpoint. The `list_integrations` tool reports the real compiled registry. Garmin remains registered but not configured. Shopify can be configured, verified, and synchronized on demand through the Admin Web, then queried from persisted D1 inventory through the `get_inventory` MCP tool. A real Cloudflare deployment and ChatGPT Work have validated that complete path.
 
 The current foundation proves the single-deployment build and routing model without prematurely inventing product contracts.
 
@@ -109,6 +109,17 @@ pnpm exec wrangler login
 pnpm provision:cloudflare
 ```
 
+Cloudflare Workers Builds stores its command settings in Cloudflare rather than `wrangler.jsonc`; Cloudflare does not currently honor Wrangler Custom Builds configuration for this purpose. A Git-connected production Worker must use these exact settings under **Settings > Build**:
+
+```text
+Root directory: /
+Build command: pnpm build
+Deploy command: pnpm deploy
+Production branch: main
+```
+
+Workers Builds runs the build command once and then the deploy command once. `pnpm deploy` applies pending remote D1 migrations and performs the single Worker publication only after migration success. Do not use the default `npx wrangler deploy`: it bypasses the migration gate. The selected Workers Builds user token must retain the normal Worker deployment permissions and add account-level **D1 Edit** so Wrangler can apply migrations. A missing permission fails the build; migrations must never be skipped to make deployment pass. The corrected repository orchestration is validated locally against isolated D1 databases, but the effective production trigger remains unverified until these dashboard values and one real Git deployment are confirmed.
+
 The provisioner authenticates through Wrangler, creates or reuses the deterministically named D1 database, writes its non-secret ID into ignored `.wrangler.production.jsonc`, configures per-installation login and OAuth rate-limit namespaces, builds the application, applies pending remote migrations, generates the temporary owner bootstrap proof, uploads it with `wrangler deploy --strict --keep-vars --secrets-file`, validates the HTTPS Admin API surface, and prints the authorized first-owner URL. Wrangler automatically provisions and preserves the project-owned `OAUTH_KV` binding. Every run regenerates the deployment file from committed `wrangler.jsonc` and carries forward only installer-owned D1 identity. Wrangler strict mode stops on conflicting remote settings instead of silently removing dashboard-managed routes or domains, while `--keep-vars` preserves dashboard-managed variables. The committed `wrangler.jsonc` omits account-specific resource IDs so they never enter Git.
 
 The application runtime receives only logical bindings, including `DB`, `OAUTH_KV`, the two rate limiters, and `OWNER_SETUP_TOKEN`. It never receives Cloudflare account-management credentials or uses resource IDs directly.
@@ -140,9 +151,13 @@ Installation evidence is tracked separately: local installation is validated; th
 
 The Worker exposes standard MCP Streamable HTTP at `/mcp`, targeting the stable `2025-11-25` revision. It requires a separate OAuth 2.1 authorization-code flow with PKCE and the read-only `integrations:read` scope; the Admin browser cookie is not an MCP credential. The existing owner authenticates and explicitly authorizes the client through the same deployment.
 
-Exactly one tool is available: `list_integrations`. It reads the shared compiled registry directly and returns only integration id, name, description, and setup status. It performs no writes and returns an empty collection normally when no integration is registered.
+`list_integrations` reads the shared compiled registry directly and returns only integration id, name, description, and setup status. It performs no writes and returns an empty collection normally when no integration is registered.
 
-The read-only connection was validated on 2026-08-16 against real Cloudflare deployments and ChatGPT Work in developer mode. ChatGPT completed OAuth 2.1 with PKCE through the deployment owner, discovered `list_integrations`, selected it from an indirect data-source question, and correctly distinguished registered Garmin from accessible data while its status was `not_configured`. A disposable deployment with an empty compiled registry returned no integrations, and ChatGPT reported the empty state without inventing records. Owner revocation invalidated the connected ChatGPT credential, and a new authorization restored access. MCP Inspector independently validated initialization, tool discovery, and invocation against the canonical HTTPS deployment. This evidence covers only the current read-only tool and tested client mode; it does not claim Garmin data tools, write actions, other ChatGPT plans, or other MCP clients.
+When Shopify is connected, `get_inventory` queries only the latest inventory persisted in D1; it never calls Shopify during an MCP request. It supports exact SKU, partial product-title and location filters, explicit in-stock/out-of-stock/low-stock semantics, an adjustable low-stock threshold, an opaque cursor, and a default limit of 25 with a maximum of 100 results. Each result contains only product, variant, SKU, tracking state, location, and available quantity. The response also reports the latest successful complete-sync timestamp so the client does not imply that quantities are live.
+
+The read-only connection was validated on 2026-08-16 against real Cloudflare deployments and ChatGPT Work in developer mode. ChatGPT completed OAuth 2.1 with PKCE through the deployment owner, discovered `list_integrations`, selected it from an indirect data-source question, and correctly distinguished registered Garmin from accessible data while its status was `not_configured`. A disposable deployment with an empty compiled registry returned no integrations, and ChatGPT reported the empty state without inventing records. Owner revocation invalidated the connected ChatGPT credential, and a new authorization restored access. MCP Inspector independently validated initialization, tool discovery, and invocation against the canonical HTTPS deployment.
+
+On the same date, the deployed Worker synchronized 18 real development-store products, 27 variants, 29 inventory levels, and 3 locations into D1, then ChatGPT discovered and naturally invoked `get_inventory`. It correctly answered out-of-stock, five-or-fewer, exact-SKU, and SKU-location questions from persisted data and reported the sync timestamp. This evidence covers only the two current read-only tools in ChatGPT Work developer mode; it does not claim Garmin data tools, write actions, other ChatGPT plans, or other MCP clients. Sanitized evidence is recorded in [the Shopify inventory MCP validation](docs/audits/2026-08-16-shopify-inventory-mcp-validation.md).
 
 ### Reset local owner authentication
 

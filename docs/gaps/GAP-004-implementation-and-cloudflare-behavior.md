@@ -7,7 +7,7 @@
 
 - Concrete libraries for MCP and retry.
 - Worker/MCP transport and runtime compatibility under `workerd` and deployed Workers.
-- Whether concurrent sync requires locking/coalescing.
+- Whether future scheduled or multi-trigger sync requires locking/coalescing beyond the proven single-owner manual Shopify guard.
 - D1 migration runner atomicity, duration, and recovery.
 - Garmin and Cloudflare limits that affect design.
 - Clean-account validation of Deploy to Cloudflare from the public default branch.
@@ -44,6 +44,10 @@ Non-loopback Admin API requests over HTTP are now rejected before auth behavior,
 The installation audit found that an ignored stale Wrangler configuration removed a dashboard-managed custom domain during a provisioning re-run. The provisioner now regenerates its configuration from committed inputs, carries forward only installer-owned D1 identity, and deploys with Wrangler `--strict` plus `--keep-vars`. Unit regression coverage verifies those invariants. After the installation branch reached the default branch, the first native deployment attempt proved that a zero UUID is treated as a real missing D1 resource rather than an automatic-provisioning placeholder. The public template now omits `database_id`, following Cloudflare's supported provisioning contract, and regression tests reject the former placeholder. The public Deploy to Cloudflare button is available from the README so the corrected default-branch flow can be exercised, but it remains explicitly unvalidated until a clean-account deployment succeeds. A disposable remote conflict test and the public button flow are evidence gaps, not reasons to weaken the fail-closed behavior.
 
 The first MCP consumer selected `@modelcontextprotocol/sdk` 1.30.0 and its Web-standard Streamable HTTP transport after workerd compatibility validation. It also selected `@cloudflare/workers-oauth-provider` 0.10.3 for standard OAuth 2.1/PKCE token lifecycle in one Worker and one KV namespace. Local production-path tests validate both libraries without `nodejs_compat`. A real Cloudflare deployment subsequently passed MCP Inspector OAuth, discovery, and invocation and ChatGPT Work developer-mode CIMD/PKCE authorization, discovery, natural tool selection, and response interpretation. Validation identified and corrected two browser integration details: the consent CSP now permits only the provider-validated callback origin, and restored Admin sessions resume the authorization endpoint through a full browser navigation rather than Vue Router. Custom-domain and `workers.dev` audiences remain intentionally distinct; a client must use one canonical MCP origin throughout its OAuth flow.
+
+The Shopify ingestion backend supplies the first concrete sync concurrency evidence. A D1 conditional state transition permits only one manual Shopify scan to advance at a time, bounded tests cover the conflict, and partial scans retain resumable cursors without reconciling deletions. This resolves the need for locking for this single-owner manual trigger only; stale-running recovery and any future scheduled/coalesced execution remain open and must be driven by operational evidence.
+
+The D1 deployment-lifecycle incident established that the Git-connected Worker used a deploy command that bypassed the repository's migration gate. The repository now has one tested production deploy orchestrator: it applies standard pending remote D1 migrations and invokes Worker publication only after success. Isolated Wrangler/D1 tests cover a newly pending migration, a no-pending redeploy, and a failed migration that prevents publication. Cloudflare stores the effective build/deploy commands outside `wrangler.jsonc`; production remains to be validated with root `/`, build command `pnpm build`, deploy command `pnpm deploy`, and a build token with account-level D1 Edit permission.
 
 ## Constraint While Open
 

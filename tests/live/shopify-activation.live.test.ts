@@ -91,6 +91,54 @@ it('validates the real Shopify development store through the production Admin ba
     ).first<{ count: number }>(),
   ).toEqual({ count: 0 })
 
+  const synchronized = await handleRequest(
+    adminRequest('/api/integrations/shopify/sync', cookie, 'POST'),
+    workerEnv(),
+  )
+  expect(synchronized.status).toBe(200)
+  await expect(synchronized.json()).resolves.toMatchObject({
+    sync: { status: 'complete', coverageComplete: true },
+  })
+  const tables = [
+    'shopify_products',
+    'shopify_variants',
+    'shopify_inventory_items',
+    'shopify_inventory_levels',
+    'shopify_locations',
+  ] as const
+  const counts = Object.fromEntries(
+    await Promise.all(
+      tables.map(async (table) => [
+        table,
+        (await env.DB.prepare(`SELECT COUNT(*) AS count FROM ${table}`).first<{
+          count: number
+        }>())!.count,
+      ]),
+    ),
+  )
+  expect(counts.shopify_products).toBeGreaterThan(0)
+  expect(counts.shopify_variants).toBeGreaterThan(0)
+  expect(counts.shopify_inventory_items).toBeGreaterThan(0)
+  expect(counts.shopify_inventory_levels).toBeGreaterThan(0)
+  expect(counts.shopify_locations).toBeGreaterThan(0)
+
+  const repeated = await handleRequest(
+    adminRequest('/api/integrations/shopify/sync', cookie, 'POST'),
+    workerEnv(),
+  )
+  expect(repeated.status).toBe(200)
+  const repeatedCounts = Object.fromEntries(
+    await Promise.all(
+      tables.map(async (table) => [
+        table,
+        (await env.DB.prepare(`SELECT COUNT(*) AS count FROM ${table}`).first<{
+          count: number
+        }>())!.count,
+      ]),
+    ),
+  )
+  expect(repeatedCounts).toEqual(counts)
+
   console.info('Sanitized Shopify product-path validation evidence:', {
     apiVersion: SHOPIFY_API_VERSION,
     scopes: [...SHOPIFY_REQUIRED_SCOPES],
@@ -98,5 +146,8 @@ it('validates the real Shopify development store through the production Admin ba
     encryptedAtRest: true,
     tokenPersisted: false,
     resultingState: 'connected',
+    syncStatus: 'complete',
+    counts,
+    repeatedSyncStable: true,
   })
 })

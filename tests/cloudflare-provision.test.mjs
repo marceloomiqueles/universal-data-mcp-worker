@@ -10,6 +10,7 @@ import {
   mcpOAuthRateLimitNamespace,
   rateLimitNamespace,
   regenerateProvisioningConfig,
+  secretListArguments,
   selectDatabase,
   shopifyConfigurationExists,
   updateProvisioningConfig,
@@ -35,17 +36,25 @@ const draftConfig = `{
 }`
 
 describe('Cloudflare provisioning configuration', () => {
-  it('declares the native Workers Builds migration-before-deploy flow', async () => {
+  it('uses the current Wrangler secret-list output option', () => {
+    assert.deepEqual(secretListArguments(), [
+      'secret',
+      'list',
+      '--format',
+      'json',
+      '--config',
+      '.wrangler.production.jsonc',
+    ])
+  })
+
+  it('declares the migration-gated Workers Builds deploy entry point', async () => {
     const packageJson = JSON.parse(await readFile('package.json', 'utf8'))
 
     assert.equal(
       packageJson.scripts['db:migrations:apply'],
       'wrangler d1 migrations apply DB --remote',
     )
-    assert.equal(
-      packageJson.scripts.deploy,
-      'pnpm db:migrations:apply && wrangler deploy',
-    )
+    assert.equal(packageJson.scripts.deploy, 'node scripts/deploy.mjs')
     assert.match(
       packageJson.cloudflare.bindings.OWNER_SETUP_TOKEN.description,
       /Temporary high-entropy proof/u,

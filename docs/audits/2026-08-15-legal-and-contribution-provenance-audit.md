@@ -10,8 +10,8 @@ Before this baseline, the repository was public, Issues were enabled, Discussion
 
 The reviewed Git history contained three commits:
 
-| Commit | Author name | Author email | Date |
-|---|---|---|---|
+| Commit                                     | Author name      | Author email                  | Date       |
+|--------------------------------------------|------------------|-------------------------------|------------|
 | `af68ca122fcdd7b92185bd8ce978dcc3b2bf5768` | Marcelo Miqueles | `marcelomiqueles@hotmail.com` | 2026-08-15 |
 | `1e76136ddeb11522bc942b1a276cd76d13734ccd` | Marcelo Miqueles | `marcelomiqueles@hotmail.com` | 2026-08-15 |
 | `73bf022620d3f5880eea7636c3a9f2a07829cd39` | Marcelo Miqueles | `marcelomiqueles@hotmail.com` | 2026-08-15 |

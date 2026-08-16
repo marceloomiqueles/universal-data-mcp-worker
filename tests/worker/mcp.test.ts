@@ -222,6 +222,13 @@ function mcpRequest(
 
 beforeEach(async () => {
   await env.DB.batch([
+    env.DB.prepare('DELETE FROM shopify_inventory_levels'),
+    env.DB.prepare('DELETE FROM shopify_variants'),
+    env.DB.prepare('DELETE FROM shopify_inventory_items'),
+    env.DB.prepare('DELETE FROM shopify_locations'),
+    env.DB.prepare('DELETE FROM shopify_products'),
+    env.DB.prepare('DELETE FROM shopify_sync_runs'),
+    env.DB.prepare('DELETE FROM shopify_connection'),
     env.DB.prepare('DELETE FROM admin_sessions'),
     env.DB.prepare('DELETE FROM owner_credentials'),
   ])
@@ -836,6 +843,114 @@ describe('MCP protocol and list_integrations tool', () => {
         },
       },
     })
+  })
+
+  it('discovers and calls persisted Shopify inventory without provider access', async () => {
+    await env.DB.batch([
+      env.DB.prepare(
+        `INSERT INTO shopify_connection
+         (id, shop_domain, client_id, client_secret_envelope, status, verified_at,
+          last_error_code, created_at, updated_at)
+         VALUES (1, 'test.myshopify.com', 'client', '{}', 'connected', ?, NULL, ?, ?)`,
+      ).bind(1723800000000, 1723800000000, 1723800000000),
+      env.DB.prepare(
+        `INSERT INTO shopify_sync_runs
+         (id, status, started_at, completed_at, top_has_next, coverage_complete)
+         VALUES ('mcp-scan', 'complete', ?, ?, 0, 1)`,
+      ).bind(1723799999000, 1723800000000),
+      env.DB.prepare(
+        `INSERT INTO shopify_products
+         (source_gid, title, handle, status, source_updated_at, last_seen_scan_id)
+         VALUES ('gid://shopify/Product/1', 'Trail Shoe', 'trail-shoe', 'ACTIVE',
+                 '2026-08-16T12:00:00Z', 'mcp-scan')`,
+      ),
+      env.DB.prepare(
+        `INSERT INTO shopify_inventory_items (source_gid, tracked, last_seen_scan_id)
+         VALUES ('gid://shopify/InventoryItem/1', 1, 'mcp-scan')`,
+      ),
+      env.DB.prepare(
+        `INSERT INTO shopify_variants
+         (source_gid, product_gid, title, sku, inventory_item_gid, source_updated_at,
+          last_seen_scan_id)
+         VALUES ('gid://shopify/ProductVariant/1', 'gid://shopify/Product/1', 'Blue',
+                 'SKU-LOW', 'gid://shopify/InventoryItem/1',
+                 '2026-08-16T12:00:00Z', 'mcp-scan')`,
+      ),
+      env.DB.prepare(
+        `INSERT INTO shopify_locations (source_gid, name, last_seen_scan_id)
+         VALUES ('gid://shopify/Location/1', 'North Warehouse', 'mcp-scan')`,
+      ),
+      env.DB.prepare(
+        `INSERT INTO shopify_inventory_levels
+         (source_gid, inventory_item_gid, location_gid, available_quantity,
+          source_updated_at, last_seen_scan_id)
+         VALUES ('gid://shopify/InventoryLevel/1', 'gid://shopify/InventoryItem/1',
+                 'gid://shopify/Location/1', 3, '2026-08-16T12:00:00Z', 'mcp-scan')`,
+      ),
+    ])
+
+    const providerFetch = globalThis.fetch
+    let providerCalled = false
+    globalThis.fetch = async (...arguments_) => {
+      providerCalled = true
+      return providerFetch(...arguments_)
+    }
+    try {
+      const { accessToken } = await oauthAccessToken()
+      const tools = await handleRequest(
+        mcpRequest(
+          { jsonrpc: '2.0', id: 20, method: 'tools/list', params: {} },
+          accessToken,
+          { 'mcp-protocol-version': '2025-11-25' },
+        ),
+        workerEnv(),
+      )
+      const toolsBody = await tools.json<{
+        result: { tools: Array<{ name: string }> }
+      }>()
+      expect(toolsBody.result.tools.map(({ name }) => name)).toEqual([
+        'list_integrations',
+        'get_inventory',
+      ])
+
+      const called = await handleRequest(
+        mcpRequest(
+          {
+            jsonrpc: '2.0',
+            id: 21,
+            method: 'tools/call',
+            params: {
+              name: 'get_inventory',
+              arguments: { stockState: 'low_stock', lowStockThreshold: 5 },
+            },
+          },
+          accessToken,
+          { 'mcp-protocol-version': '2025-11-25' },
+        ),
+        workerEnv(),
+      )
+      expect(called.status).toBe(200)
+      await expect(called.json()).resolves.toMatchObject({
+        result: {
+          structuredContent: {
+            items: [
+              {
+                product: 'Trail Shoe',
+                variant: 'Blue',
+                sku: 'SKU-LOW',
+                location: 'North Warehouse',
+                available: 3,
+              },
+            ],
+            nextCursor: null,
+            lastSuccessfulSyncAt: new Date(1723800000000).toISOString(),
+          },
+        },
+      })
+      expect(providerCalled).toBe(false)
+    } finally {
+      globalThis.fetch = providerFetch
+    }
   })
 
   it('rejects unsupported protocol headers and unexpected tool input', async () => {

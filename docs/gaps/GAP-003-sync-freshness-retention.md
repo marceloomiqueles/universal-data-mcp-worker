@@ -16,6 +16,8 @@
 
 Shared mechanisms, slice responsibility, idempotency, and disable/reactivate/purge semantics are decided. Values depend on real Garmin behavior, cost, and mutability.
 
+The first Shopify ingestion consumer now proves a bounded manual cursor scan, resumable partial coverage, deterministic upserts, and complete-scan-only reconciliation. It deliberately does not select a background cadence, freshness policy, retention period, or generic sync abstraction.
+
 ## Evidence Needed to Close
 
 - Dataset mutability and historical availability measurements.

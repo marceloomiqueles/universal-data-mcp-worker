@@ -68,11 +68,11 @@ No stale Vite demo component, logo, counter, sample CSS, or second app was found
 
 ### Direct runtime dependencies
 
-| Dependency | Resolved version | Consumer | Result |
-|---|---:|---|---|
-| `vue` | 3.5.41 | `src/admin/main.ts`, tests | Justified |
-| `vue-router` | 4.6.4 | `src/admin/router.ts`, tests | Justified; peer requires Vue `^3.5.0` |
-| `vuetify` | 4.1.9 | `src/admin/vuetify.ts`, SFC auto-imports/styles | Justified; peers accept Vue 3.5 and `vite-plugin-vuetify >=2.1.0` |
+| Dependency   | Resolved version | Consumer                                        | Result                                                            |
+|--------------|-----------------:|-------------------------------------------------|-------------------------------------------------------------------|
+| `vue`        |           3.5.41 | `src/admin/main.ts`, tests                      | Justified                                                         |
+| `vue-router` |            4.6.4 | `src/admin/router.ts`, tests                    | Justified; peer requires Vue `^3.5.0`                             |
+| `vuetify`    |            4.1.9 | `src/admin/vuetify.ts`, SFC auto-imports/styles | Justified; peers accept Vue 3.5 and `vite-plugin-vuetify >=2.1.0` |
 
 ### Direct development dependencies
 
@@ -143,21 +143,21 @@ There is no Pages configuration, separate host, Node server, service binding, se
 
 Fresh production preview produced:
 
-| Request | Status/content type | Result |
-|---|---|---|
-| `/` | 200 HTML | SPA |
-| `/status` | 200 HTML | SPA fallback |
-| `/login` | 200 HTML | SPA fallback |
-| `/arbitrary-ui-deep-link` | 200 HTML | SPA fallback |
-| `/api` | 501 JSON | Admin API boundary |
-| `/api/` | 501 JSON | Admin API boundary |
-| `/api/health` and query-string variant | 501 JSON | Admin API boundary |
-| `/mcp` | 501 JSON | MCP boundary |
-| `/mcp/` | 501 JSON | MCP boundary |
-| `/mcp/session` and query-string variant | 501 JSON | MCP boundary |
-| `/apiary` | 200 HTML | Correctly not `/api` |
-| `/mcproxy` | 200 HTML | Correctly not `/mcp` |
-| built JS asset | 200 JavaScript | Static asset |
+| Request                                 | Status/content type | Result               |
+|-----------------------------------------|---------------------|----------------------|
+| `/`                                     | 200 HTML            | SPA                  |
+| `/status`                               | 200 HTML            | SPA fallback         |
+| `/login`                                | 200 HTML            | SPA fallback         |
+| `/arbitrary-ui-deep-link`               | 200 HTML            | SPA fallback         |
+| `/api`                                  | 501 JSON            | Admin API boundary   |
+| `/api/`                                 | 501 JSON            | Admin API boundary   |
+| `/api/health` and query-string variant  | 501 JSON            | Admin API boundary   |
+| `/mcp`                                  | 501 JSON            | MCP boundary         |
+| `/mcp/`                                 | 501 JSON            | MCP boundary         |
+| `/mcp/session` and query-string variant | 501 JSON            | MCP boundary         |
+| `/apiary`                               | 200 HTML            | Correctly not `/api` |
+| `/mcproxy`                              | 200 HTML            | Correctly not `/mcp` |
+| built JS asset                          | 200 JavaScript      | Static asset         |
 
 Development mode independently returned the same SPA/JSON split for the exact and nested boundaries and the near-prefix negatives.
 
@@ -198,18 +198,18 @@ All eight scripts have a current purpose and reference installed executables. Th
 
 The host provided Node 26.5.1 and a Corepack-managed `pnpm` command. The global Corepack wrapper failed before pnpm execution with `ERR_VM_DYNAMIC_IMPORT_CALLBACK_MISSING`, despite Node 26 satisfying the repository engine range. This was isolated to that host wrapper: invoking the already-downloaded, package-manager-pinned pnpm 11.22.0 CLI directly under the same Node runtime succeeded without installing or changing packages.
 
-| Command/operation | Result | Notes |
-|---|---|---|
+| Command/operation                                                         | Result               | Notes                                                                                                                       |
+|---------------------------------------------------------------------------|----------------------|-----------------------------------------------------------------------------------------------------------------------------|
 | `pnpm --version` and documented `pnpm ...` commands through host Corepack | Not executed by pnpm | Host Corepack wrapper failed before pnpm startup. This is an environment/tool-shim limitation, not a package graph failure. |
-| pinned pnpm 11.22.0 `install` | PASS | Already up to date; lockfile unchanged. |
-| pinned pnpm `typecheck` | PASS | Vue and Worker projects passed. |
-| pinned pnpm `lint` | PASS | No diagnostics. |
-| pinned pnpm `format:check` | PASS | All checked files formatted. |
-| pinned pnpm `test` | PASS | 2 files, 7 tests. |
-| pinned pnpm `build` | PASS | Worker and client production builds completed. |
-| production `vite preview` | PASS | Route matrix above verified under local Workers runtime. |
-| Vite/Cloudflare development server | PASS | Exact/nested Worker boundaries and SPA routes verified. |
-| actual Cloudflare deployment | NOT RUN | Correctly outside scaffold validation and not documented as complete. |
+| pinned pnpm 11.22.0 `install`                                             | PASS                 | Already up to date; lockfile unchanged.                                                                                     |
+| pinned pnpm `typecheck`                                                   | PASS                 | Vue and Worker projects passed.                                                                                             |
+| pinned pnpm `lint`                                                        | PASS                 | No diagnostics.                                                                                                             |
+| pinned pnpm `format:check`                                                | PASS                 | All checked files formatted.                                                                                                |
+| pinned pnpm `test`                                                        | PASS                 | 2 files, 7 tests.                                                                                                           |
+| pinned pnpm `build`                                                       | PASS                 | Worker and client production builds completed.                                                                              |
+| production `vite preview`                                                 | PASS                 | Route matrix above verified under local Workers runtime.                                                                    |
+| Vite/Cloudflare development server                                        | PASS                 | Exact/nested Worker boundaries and SPA routes verified.                                                                     |
+| actual Cloudflare deployment                                              | NOT RUN              | Correctly outside scaffold validation and not documented as complete.                                                       |
 
 Build emitted a Wrangler debug-log `EPERM` warning because the audit sandbox blocked writing under the user's Library preferences directory. The build still exited successfully and produced complete output; this is not a repository build defect.
 
@@ -241,49 +241,49 @@ README, TESTING, CONTRIBUTING, GAP-004, ADR-0007, and the runbook index accurate
 
 ## 14. Audit Matrix
 
-| Requirement | Status | Evidence | Severity | Required action |
-| ----------- | ------ | -------- | -------- | --------------- |
-| One coherent root project | PASS | One root manifest, one lockfile importer, one source tree, one test tree. | — | None. |
-| No monorepo/package architecture | PASS | No package globs, subpackage manifests, workspace protocols, or linked importers. | — | None. |
-| `pnpm-workspace.yaml` is settings-only | PASS | Only `allowBuilds` for esbuild/workerd; pnpm docs say omitted `packages` includes only root. | — | None. |
-| Package manager and lockfile | PASS | `pnpm@11.22.0`, one lockfile, fresh install unchanged. | — | None. |
-| Direct dependencies justified | PASS | Every runtime/dev dependency has a source/config/script consumer. | — | None. |
-| Excluded/demo dependencies absent | PASS | Manifest and source scans; no Vuexy/Tailwind/Bootstrap/Pinia/MSW/JWT/etc. | — | None. |
-| Version/peer compatibility | PASS | Installed peer metadata, lock graph, typecheck/build/test/preview. | — | None. |
-| No unexpected direct prerelease | PASS | All direct versions are stable. | — | None. |
-| Scripts purposeful and safe | PASS | `package.json:11-20`; no lifecycle/deploy/demo/destructive scripts. | — | None. |
-| Documented pnpm command portability on audit host | NOT VERIFIED | Host Corepack failed under Node 26 before pnpm; pinned pnpm CLI passed all operations. | — | Confirm standard Corepack/pnpm invocation under the documented Node 22.13+ baseline in CI or a clean supported host. |
-| Browser/Worker TypeScript separation | PASS | Separate includes/libs/types; source import graph clean. | — | None. |
-| Tests included in static typecheck | PARTIAL | Neither `tsconfig.app.json` nor `tsconfig.worker.json` includes `tests/**`. | P3 | Add a test typecheck configuration or include tests in an appropriate typed project when authorized. |
-| Official Cloudflare Vite integration | PASS | `cloudflare()` from `@cloudflare/vite-plugin`; official documented mechanism. | — | None. |
-| One Worker/one deployment output | PASS | One Wrangler name/main, one Worker bundle, one client asset set. | — | None. |
-| Exact `/api` and nested routing | PASS | Source matching plus dev/preview `/api`, `/api/`, `/api/health`; 501 JSON. | — | None. |
-| Exact `/mcp` and nested routing | PASS | Source matching plus dev/preview `/mcp`, `/mcp/`, `/mcp/session`; 501 JSON. | — | None. |
-| Prefix/query/trailing-slash correctness | PASS | Preview matrix and parsed pathname/equality logic. | — | None. |
-| SPA fallback/deep navigation | PASS | Preview `/`, `/status`, `/login`, arbitrary deep link returned SPA HTML. | — | None. |
-| Static asset serving | PASS | Hashed JS returned JavaScript; SPA not-found handling matches platform config. | — | None. |
-| Neutral Worker responses only | PASS | `src/worker/index.ts:9-16`; status/boundary JSON only. | — | None. |
-| Approved Admin views and shell | PASS | App plus five neutral views and router. | — | None. |
-| Responsive Admin shell | PARTIAL | Permanent drawer has no narrow-screen state or test. | P2 | Implement and verify a minimal Vuetify breakpoint/mobile drawer behavior before the UI grows. |
-| Direct independent Vuetify integration | PASS | `src/admin/vuetify.ts`, minimal owned theme/CSS, package source only. | — | None. |
-| Vuexy contamination absent | PASS | Manifest/source/style/output searches; legal references only. | — | None. |
-| Product behavior excluded | PASS | Complete source/dependency scan; placeholders explicitly neutral. | — | None. |
-| D1 absent at scaffold stage | PASS | No binding, schema, migration, repository, or generated D1 config. | — | None. |
-| Meaningful SPA tests | PASS | Actual Vue/Vuetify rendering for home/deep/login/not-found. | — | None. |
-| Production router exercised directly | PARTIAL | Tests recreate a reduced route table and omit `/loading`. | P2 | Export/reuse production route definitions or test the production router to prevent drift. |
-| Meaningful Worker boundary tests | PASS | Nested routes assert status, content type, JSON, and asset delegation. | — | None. |
-| Exact base-path regression tests | PARTIAL | Unit tests omit exact `/api` and `/mcp`; preview verified behavior only. | P2 | Add exact, trailing-slash, query, and near-prefix cases to the Worker test table. |
-| Typecheck/lint/format/test/build | PASS | All passed using pinned pnpm 11.22.0 CLI; 7 tests. | — | None. |
-| Development runtime validation | PASS | Dev server returned correct SPA/Worker split. | — | None. |
-| Production preview validation | PASS | Full route matrix verified under Workers preview. | — | None. |
-| Cloudflare production deployment | NOT VERIFIED | No deployment was performed; docs explicitly disclaim it. | — | Validate during a separately authorized deployment task. |
-| Worker bundle excludes SPA code | PASS | 0.71 kB output inspected line-by-line; no Vue/DOM/Node code. | — | None. |
-| Client bundle excludes secrets/Vuexy/fake data | PASS | Generated-output searches and source inspection. | — | None. |
-| Secret/credential hygiene | PASS | No committed or generated secret identified. | — | None. |
-| Runtime portability | PASS | No tracked machine paths; local path only in ignored generated metadata/historical audit evidence. | — | None. |
-| Direct dependency licensing | PASS | Installed metadata plus `docs/legal/third-party-licensing.md`. | — | None. |
-| Git hygiene | PASS | Clean start; generated/local directories ignored and untracked. | — | Keep `dist`, `.wrangler`, stores, IDE state, and env files untracked. |
-| Documentation matches implementation | PASS | README/TESTING/CONTRIBUTING/GAP-004/runbooks accurately scope local scaffold. | — | None. |
+| Requirement                                       | Status       | Evidence                                                                                           | Severity  | Required action                                                                                                      |
+|---------------------------------------------------|--------------|----------------------------------------------------------------------------------------------------|-----------|----------------------------------------------------------------------------------------------------------------------|
+| One coherent root project                         | PASS         | One root manifest, one lockfile importer, one source tree, one test tree.                          | —         | None.                                                                                                                |
+| No monorepo/package architecture                  | PASS         | No package globs, subpackage manifests, workspace protocols, or linked importers.                  | —         | None.                                                                                                                |
+| `pnpm-workspace.yaml` is settings-only            | PASS         | Only `allowBuilds` for esbuild/workerd; pnpm docs say omitted `packages` includes only root.       | —         | None.                                                                                                                |
+| Package manager and lockfile                      | PASS         | `pnpm@11.22.0`, one lockfile, fresh install unchanged.                                             | —         | None.                                                                                                                |
+| Direct dependencies justified                     | PASS         | Every runtime/dev dependency has a source/config/script consumer.                                  | —         | None.                                                                                                                |
+| Excluded/demo dependencies absent                 | PASS         | Manifest and source scans; no Vuexy/Tailwind/Bootstrap/Pinia/MSW/JWT/etc.                          | —         | None.                                                                                                                |
+| Version/peer compatibility                        | PASS         | Installed peer metadata, lock graph, typecheck/build/test/preview.                                 | —         | None.                                                                                                                |
+| No unexpected direct prerelease                   | PASS         | All direct versions are stable.                                                                    | —         | None.                                                                                                                |
+| Scripts purposeful and safe                       | PASS         | `package.json:11-20`; no lifecycle/deploy/demo/destructive scripts.                                | —         | None.                                                                                                                |
+| Documented pnpm command portability on audit host | NOT VERIFIED | Host Corepack failed under Node 26 before pnpm; pinned pnpm CLI passed all operations.             | —         | Confirm standard Corepack/pnpm invocation under the documented Node 22.13+ baseline in CI or a clean supported host. |
+| Browser/Worker TypeScript separation              | PASS         | Separate includes/libs/types; source import graph clean.                                           | —         | None.                                                                                                                |
+| Tests included in static typecheck                | PARTIAL      | Neither `tsconfig.app.json` nor `tsconfig.worker.json` includes `tests/**`.                        | P3        | Add a test typecheck configuration or include tests in an appropriate typed project when authorized.                 |
+| Official Cloudflare Vite integration              | PASS         | `cloudflare()` from `@cloudflare/vite-plugin`; official documented mechanism.                      | —         | None.                                                                                                                |
+| One Worker/one deployment output                  | PASS         | One Wrangler name/main, one Worker bundle, one client asset set.                                   | —         | None.                                                                                                                |
+| Exact `/api` and nested routing                   | PASS         | Source matching plus dev/preview `/api`, `/api/`, `/api/health`; 501 JSON.                         | —         | None.                                                                                                                |
+| Exact `/mcp` and nested routing                   | PASS         | Source matching plus dev/preview `/mcp`, `/mcp/`, `/mcp/session`; 501 JSON.                        | —         | None.                                                                                                                |
+| Prefix/query/trailing-slash correctness           | PASS         | Preview matrix and parsed pathname/equality logic.                                                 | —         | None.                                                                                                                |
+| SPA fallback/deep navigation                      | PASS         | Preview `/`, `/status`, `/login`, arbitrary deep link returned SPA HTML.                           | —         | None.                                                                                                                |
+| Static asset serving                              | PASS         | Hashed JS returned JavaScript; SPA not-found handling matches platform config.                     | —         | None.                                                                                                                |
+| Neutral Worker responses only                     | PASS         | `src/worker/index.ts:9-16`; status/boundary JSON only.                                             | —         | None.                                                                                                                |
+| Approved Admin views and shell                    | PASS         | App plus five neutral views and router.                                                            | —         | None.                                                                                                                |
+| Responsive Admin shell                            | PARTIAL      | Permanent drawer has no narrow-screen state or test.                                               | P2        | Implement and verify a minimal Vuetify breakpoint/mobile drawer behavior before the UI grows.                        |
+| Direct independent Vuetify integration            | PASS         | `src/admin/vuetify.ts`, minimal owned theme/CSS, package source only.                              | —         | None.                                                                                                                |
+| Vuexy contamination absent                        | PASS         | Manifest/source/style/output searches; legal references only.                                      | —         | None.                                                                                                                |
+| Product behavior excluded                         | PASS         | Complete source/dependency scan; placeholders explicitly neutral.                                  | —         | None.                                                                                                                |
+| D1 absent at scaffold stage                       | PASS         | No binding, schema, migration, repository, or generated D1 config.                                 | —         | None.                                                                                                                |
+| Meaningful SPA tests                              | PASS         | Actual Vue/Vuetify rendering for home/deep/login/not-found.                                        | —         | None.                                                                                                                |
+| Production router exercised directly              | PARTIAL      | Tests recreate a reduced route table and omit `/loading`.                                          | P2        | Export/reuse production route definitions or test the production router to prevent drift.                            |
+| Meaningful Worker boundary tests                  | PASS         | Nested routes assert status, content type, JSON, and asset delegation.                             | —         | None.                                                                                                                |
+| Exact base-path regression tests                  | PARTIAL      | Unit tests omit exact `/api` and `/mcp`; preview verified behavior only.                           | P2        | Add exact, trailing-slash, query, and near-prefix cases to the Worker test table.                                    |
+| Typecheck/lint/format/test/build                  | PASS         | All passed using pinned pnpm 11.22.0 CLI; 7 tests.                                                 | —         | None.                                                                                                                |
+| Development runtime validation                    | PASS         | Dev server returned correct SPA/Worker split.                                                      | —         | None.                                                                                                                |
+| Production preview validation                     | PASS         | Full route matrix verified under Workers preview.                                                  | —         | None.                                                                                                                |
+| Cloudflare production deployment                  | NOT VERIFIED | No deployment was performed; docs explicitly disclaim it.                                          | —         | Validate during a separately authorized deployment task.                                                             |
+| Worker bundle excludes SPA code                   | PASS         | 0.71 kB output inspected line-by-line; no Vue/DOM/Node code.                                       | —         | None.                                                                                                                |
+| Client bundle excludes secrets/Vuexy/fake data    | PASS         | Generated-output searches and source inspection.                                                   | —         | None.                                                                                                                |
+| Secret/credential hygiene                         | PASS         | No committed or generated secret identified.                                                       | —         | None.                                                                                                                |
+| Runtime portability                               | PASS         | No tracked machine paths; local path only in ignored generated metadata/historical audit evidence. | —         | None.                                                                                                                |
+| Direct dependency licensing                       | PASS         | Installed metadata plus `docs/legal/third-party-licensing.md`.                                     | —         | None.                                                                                                                |
+| Git hygiene                                       | PASS         | Clean start; generated/local directories ignored and untracked.                                    | —         | Keep `dist`, `.wrangler`, stores, IDE state, and env files untracked.                                                |
+| Documentation matches implementation              | PASS         | README/TESTING/CONTRIBUTING/GAP-004/runbooks accurately scope local scaffold.                      | —         | None.                                                                                                                |
 
 ## 15. Prioritized Findings
 

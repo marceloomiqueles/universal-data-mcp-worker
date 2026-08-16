@@ -324,13 +324,7 @@ async function deploy(secrets = {}) {
 }
 
 async function secretNames() {
-  const result = await captureWrangler([
-    'secret',
-    'list',
-    '--json',
-    '--config',
-    deploymentConfigPath,
-  ])
+  const result = await captureWrangler(secretListArguments())
   const values = JSON.parse(result.stdout)
   return new Set(
     Array.isArray(values)
@@ -339,6 +333,17 @@ async function secretNames() {
           .filter((name) => typeof name === 'string')
       : [],
   )
+}
+
+export function secretListArguments() {
+  return [
+    'secret',
+    'list',
+    '--format',
+    'json',
+    '--config',
+    deploymentConfigPath,
+  ]
 }
 
 export function shopifyConfigurationExists(output) {

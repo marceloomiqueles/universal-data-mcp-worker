@@ -29,6 +29,26 @@ export interface ShopifyConnectionState {
   status: ShopifyStatus
   verifiedAt: string | null
   lastErrorCode: ShopifyErrorCode | null
+  sync?: ShopifySyncState | null
+  lastSuccessfulSyncAt?: string | null
+}
+
+export type ShopifySyncStatus = 'complete' | 'partial' | 'failed'
+
+export interface ShopifySyncState {
+  status: ShopifySyncStatus
+  coverageComplete: boolean
+  continuationAvailable: boolean
+  startedAt: string
+  completedAt: string | null
+  lastErrorCode: ShopifyErrorCode | null
+  counts: {
+    requests: number
+    pages: number
+    products: number
+    variants: number
+    inventoryLevels: number
+  }
 }
 
 export interface ShopifyConfigurationInput {
@@ -51,7 +71,32 @@ function validState(value: unknown): value is ShopifyConnectionState {
     ) &&
     (state.verifiedAt === null || typeof state.verifiedAt === 'string') &&
     (state.lastErrorCode === null ||
-      shopifyErrorCodes.includes(state.lastErrorCode as ShopifyErrorCode))
+      shopifyErrorCodes.includes(state.lastErrorCode as ShopifyErrorCode)) &&
+    (state.sync === undefined ||
+      state.sync === null ||
+      validSync(state.sync)) &&
+    (state.lastSuccessfulSyncAt === undefined ||
+      state.lastSuccessfulSyncAt === null ||
+      typeof state.lastSuccessfulSyncAt === 'string')
+  )
+}
+
+function validSync(value: unknown): value is ShopifySyncState {
+  if (!value || typeof value !== 'object') return false
+  const sync = value as Partial<ShopifySyncState>
+  const counts = sync.counts as Partial<ShopifySyncState['counts']> | undefined
+  return (
+    ['complete', 'partial', 'failed'].includes(sync.status ?? '') &&
+    typeof sync.coverageComplete === 'boolean' &&
+    typeof sync.continuationAvailable === 'boolean' &&
+    typeof sync.startedAt === 'string' &&
+    (sync.completedAt === null || typeof sync.completedAt === 'string') &&
+    (sync.lastErrorCode === null ||
+      shopifyErrorCodes.includes(sync.lastErrorCode as ShopifyErrorCode)) &&
+    !!counts &&
+    ['requests', 'pages', 'products', 'variants', 'inventoryLevels'].every(
+      (key) => typeof counts[key as keyof typeof counts] === 'number',
+    )
   )
 }
 
@@ -106,4 +151,20 @@ export async function disconnectShopify(
     credentials: 'same-origin',
   })
   if (!response.ok) throw new Error('Shopify disconnect failed')
+}
+
+export async function syncShopifyInventory(
+  request: Request = globalThis.fetch.bind(globalThis),
+): Promise<ShopifySyncState> {
+  const response = await request('/api/integrations/shopify/sync', {
+    method: 'POST',
+    credentials: 'same-origin',
+  })
+  const body: unknown = await response.json()
+  const sync =
+    body && typeof body === 'object'
+      ? (body as { sync?: unknown }).sync
+      : undefined
+  if (!validSync(sync)) throw new Error('Shopify synchronization failed')
+  return sync
 }

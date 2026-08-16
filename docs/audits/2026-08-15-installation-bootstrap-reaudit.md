@@ -198,13 +198,13 @@ No bootstrap proof, Cloudflare management credential, generated production confi
 
 ## Finding Status Table
 
-| Finding | Status | Evidence summary |
-|---|---|---|
-| P1-1 Public Deploy target | `RESOLVED` | `main`, `origin/main`, and the GitHub default branch contain the implementation and canonical button. |
-| P1-2 Safe provisioning re-run | `RESOLVED` | Generated config is rebuilt from committed input; D1 identity alone is retained; Wrangler strict mode fails on remote conflicts; variables are preserved; unknown existing Workers fail closed. Real remote conflict validation remains pending. |
-| P2-1 Non-technical Deploy UX | `IMPROVED` | Infrastructure is native and documented, but proof generation/paste and setup-link construction remain manual. |
-| P2-2 Clean Deploy-button validation | `NOT YET VALIDATED` | The current public default-branch button has not completed a disposable clean installation. |
-| P2-3 Build-output secret duplication | `MITIGATED` | Worker preview output still contains `.dev.vars`; Git/browser/deployment containment and actual-value checks are effective. |
+| Finding                              | Status              | Evidence summary                                                                                                                                                                                                                                 |
+|--------------------------------------|---------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| P1-1 Public Deploy target            | `RESOLVED`          | `main`, `origin/main`, and the GitHub default branch contain the implementation and canonical button.                                                                                                                                            |
+| P1-2 Safe provisioning re-run        | `RESOLVED`          | Generated config is rebuilt from committed input; D1 identity alone is retained; Wrangler strict mode fails on remote conflicts; variables are preserved; unknown existing Workers fail closed. Real remote conflict validation remains pending. |
+| P2-1 Non-technical Deploy UX         | `IMPROVED`          | Infrastructure is native and documented, but proof generation/paste and setup-link construction remain manual.                                                                                                                                   |
+| P2-2 Clean Deploy-button validation  | `NOT YET VALIDATED` | The current public default-branch button has not completed a disposable clean installation.                                                                                                                                                      |
+| P2-3 Build-output secret duplication | `MITIGATED`         | Worker preview output still contains `.dev.vars`; Git/browser/deployment containment and actual-value checks are effective.                                                                                                                      |
 
 ## New Findings
 

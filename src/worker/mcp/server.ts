@@ -3,6 +3,7 @@ import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/
 import { z } from 'zod'
 
 import type { IntegrationRegistry } from '../../core/integrations/registry'
+import { queryShopifyInventory } from '../../integrations/shopify/inventory-query'
 
 const MAX_REQUEST_BYTES = 64 * 1024
 const REQUIRED_SCOPE = 'integrations:read'
@@ -75,10 +76,10 @@ async function boundedRequest(request: Request): Promise<Request | Response> {
   return new Request(request, { body })
 }
 
-export function createMcpServer(
+export async function createMcpServer(
   registry: IntegrationRegistry,
   db: D1Database,
-): McpServer {
+): Promise<McpServer> {
   const server = new McpServer(
     { name: 'universal-data-mcp-worker', version: '0.1.0' },
     { capabilities: { tools: {} } },
@@ -140,6 +141,73 @@ export function createMcpServer(
     },
   )
 
+  const shopify = (await registry.list(db)).find(({ id }) => id === 'shopify')
+  if (shopify?.status === 'connected') {
+    const inventoryItemSchema = z.object({
+      product: z.string(),
+      variant: z.string(),
+      sku: z.string().nullable(),
+      tracked: z.boolean(),
+      location: z.string().nullable(),
+      available: z.number().int().nullable(),
+    })
+    const inventoryOutputSchema = z.object({
+      items: z.array(inventoryItemSchema),
+      nextCursor: z.string().nullable(),
+      lastSuccessfulSyncAt: z.string().datetime().nullable(),
+    })
+
+    server.registerTool(
+      'get_inventory',
+      {
+        title: 'Get Shopify inventory',
+        description:
+          'Searches the latest persisted Shopify product inventory by exact SKU, product title, location, or stock state. Use this for stock availability, out-of-stock, low-stock, SKU, and location questions. Results reflect the last completed sync and are not live Shopify data.',
+        inputSchema: z
+          .object({
+            sku: z.string().trim().min(1).max(128).optional(),
+            productText: z.string().trim().min(1).max(128).optional(),
+            location: z.string().trim().min(1).max(128).optional(),
+            stockState: z
+              .enum(['all', 'in_stock', 'out_of_stock', 'low_stock'])
+              .optional(),
+            lowStockThreshold: z.number().int().min(0).max(1000).optional(),
+            limit: z.number().int().min(1).max(100).optional(),
+            cursor: z.string().min(1).max(2048).optional(),
+          })
+          .strict(),
+        outputSchema: inventoryOutputSchema,
+        annotations: {
+          readOnlyHint: true,
+          destructiveHint: false,
+          openWorldHint: false,
+        },
+      },
+      async (input) => {
+        const inventory = await queryShopifyInventory(db, input)
+        const freshness = inventory.lastSuccessfulSyncAt
+          ? ` Last completed sync: ${inventory.lastSuccessfulSyncAt}.`
+          : ' No completed inventory sync is recorded.'
+        return {
+          content: [
+            {
+              type: 'text',
+              text:
+                inventory.items.length === 0
+                  ? `No inventory matched the requested filters.${freshness}`
+                  : `Found ${inventory.items.length} inventory result${inventory.items.length === 1 ? '' : 's'}.${freshness}`,
+            },
+          ],
+          structuredContent: {
+            items: inventory.items,
+            nextCursor: inventory.nextCursor,
+            lastSuccessfulSyncAt: inventory.lastSuccessfulSyncAt,
+          },
+        }
+      },
+    )
+  }
+
   return server
 }
 
@@ -158,7 +226,7 @@ export async function handleMcpRequest(
   const bounded = await boundedRequest(request)
   if (bounded instanceof Response) return bounded
 
-  const server = createMcpServer(registry, db)
+  const server = await createMcpServer(registry, db)
   const transport = new WebStandardStreamableHTTPServerTransport({
     sessionIdGenerator: undefined,
     enableJsonResponse: true,

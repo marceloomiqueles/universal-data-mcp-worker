@@ -16,16 +16,16 @@ README, architecture, conceptual security, ADRs, gaps, initial audit, plan, and 
 
 ## Justified Changes
 
-| Need | Treatment |
-|---|---|
-| Onboarding | `CONTRIBUTING.md` |
-| Standard conduct | Adapted Contributor Covenant 2.1 |
-| Vulnerabilities | `SECURITY.md` and explicit gap |
-| Support | `SUPPORT.md` |
-| Safe issues/PRs | Short `.github/` templates |
-| Legal decision | Analysis and gap, without `LICENSE` |
+| Need             | Treatment                                |
+|------------------|------------------------------------------|
+| Onboarding       | `CONTRIBUTING.md`                        |
+| Standard conduct | Adapted Contributor Covenant 2.1         |
+| Vulnerabilities  | `SECURITY.md` and explicit gap           |
+| Support          | `SUPPORT.md`                             |
+| Safe issues/PRs  | Short `.github/` templates               |
+| Legal decision   | Analysis and gap, without `LICENSE`      |
 | Public evolution | Minimal `CHANGELOG.md` with `Unreleased` |
-| Navigation | Updated README and documentation index |
+| Navigation       | Updated README and documentation index   |
 
 ## Considered and Rejected
 

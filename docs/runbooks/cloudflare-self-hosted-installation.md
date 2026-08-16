@@ -27,8 +27,23 @@ Use the **Deploy to Cloudflare** button in the public README. Cloudflare's nativ
 2. creates a user-owned fork;
 3. reads `wrangler.jsonc` and provisions D1 for binding `DB`; the public template deliberately omits `database_id`, which is Cloudflare's automatic-provisioning signal;
 4. asks for the `OWNER_SETUP_TOKEN` secret declared by `.dev.vars.example`;
-5. runs `pnpm build` and `pnpm deploy` through Workers Builds;
-6. applies D1 migrations before deploying the Worker.
+5. requires the owner to verify the Workers Builds settings described below;
+6. runs `pnpm build`, then the migration-gated `pnpm deploy` command.
+
+Cloudflare stores Workers Builds commands in dashboard/API trigger state and currently does not honor Wrangler Custom Builds configuration. Configure the production trigger under **Settings > Build** with:
+
+```text
+Production branch: main
+Root directory: /
+Build command: pnpm build
+Deploy command: pnpm deploy
+```
+
+The build system executes the build command and then exactly one deploy command. `pnpm deploy` first runs standard pending D1 migrations and invokes the single `wrangler deploy` only after they succeed. The default `npx wrangler deploy` is unsafe for this repository because it bypasses that gate.
+
+The automatically generated Workers Builds token documented by Cloudflare does not include D1 in its default permission list. Edit or select the narrowest user token that retains the required Worker deployment permissions and adds account-level **D1 Edit**. This credential belongs to Cloudflare's build control plane; never add it to Git, Worker variables, application secrets, or the application runtime. If D1 permission is missing, migration apply must fail the build and prevent publication.
+
+The repository cannot declare these trigger fields in `wrangler.jsonc`, so the effective dashboard values must be checked after initial installation and whenever the Git connection or build token changes. The repository orchestration is regression-tested, but this production trigger is not marked safe until a real Git build confirms the configured command and migration ordering.
 
 The remaining native-platform limitation is bootstrap handoff. Cloudflare can request a secret but cannot generate it and securely return the matching post-deploy setup URL. The planned copy/paste sequence is:
 
@@ -139,9 +154,9 @@ Cloudflare's Vite plugin intentionally places the local `.dev.vars` file in igno
 
 ## Secrets
 
-| Name | Source | Lifetime | Storage |
-|---|---|---|---|
-| `OWNER_SETUP_TOKEN` | Generated with Node cryptographic randomness | Required only until the singleton owner exists | Cloudflare Worker secret; temporary upload file is deleted |
+| Name                      | Source                                                       | Lifetime                                                  | Storage                                                                           |
+|---------------------------|--------------------------------------------------------------|-----------------------------------------------------------|-----------------------------------------------------------------------------------|
+| `OWNER_SETUP_TOKEN`       | Generated with Node cryptographic randomness                 | Required only until the singleton owner exists            | Cloudflare Worker secret; temporary upload file is deleted                        |
 | `INTEGRATION_SECRETS_KEY` | Generated as 32 random bytes encoded with unpadded Base64URL | Required while encrypted integration configuration exists | Cloudflare Worker secret; provisioned only when absent and never silently rotated |
 
 Shopify client credentials are supplied later through the authenticated Admin API, not through provisioning. The client secret is encrypted before D1 persistence using `INTEGRATION_SECRETS_KEY`. The key cannot be recovered from D1: losing or changing it makes existing encrypted credentials unreadable, so the owner must re-enter the affected configuration or disconnect it. Disconnect remains available because it does not decrypt the row. Provisioning detects the existing secret name and never silently replaces it; full key rotation is not implemented. Cloudflare authentication remains in Wrangler's standard credential storage and is never passed to the Worker.
@@ -164,6 +179,8 @@ The provisioning configuration explicitly enables the HTTPS-capable `workers.dev
 - Setup/HTTPS validation failure: provisioning reports failure and does not claim a usable installation.
 
 Never delete a production D1 database as routine recovery.
+
+For Git deployment, inspect the Cloudflare build log before treating a schema-changing revision as successful. It must show the `pnpm deploy` entry point, the Wrangler pending-migration result, and only then the Worker upload. A raw `wrangler deploy` without the preceding migration step indicates configuration drift; stop Git publication and restore the exact deploy command above.
 
 ## Validation evidence and remaining owner action
 

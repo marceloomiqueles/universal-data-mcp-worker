@@ -86,30 +86,30 @@ Nevertheless, a plaintext copy in build output increases exposure if CI or suppo
 
 ## Verification Matrix
 
-| Area | Result | Evidence |
-|---|---|---|
-| Clean dependency installation | Pass | `pnpm install` completed from the committed lockfile in a temporary checkout. |
-| Local configuration | Pass | `pnpm setup:local` created `.dev.vars` with mode `0600`; `.gitignore` excludes actual files and retains only the empty example. |
-| Bootstrap entropy | Pass | Node `randomBytes(32)` produces a 256-bit, 43-character Base64URL proof; distinct-value and format tests pass. |
-| Local D1 initialization | Pass | Wrangler created local state through logical binding `DB` and applied `0001_owner_auth.sql`. |
-| Local migration repeatability | Pass | A second setup reported no pending migrations and preserved the original proof. |
-| Authorized local URL | Pass | Setup printed the exact `/login#bootstrap=<proof>` contract after migrations succeeded. |
-| Local owner/session journey | Pass | Clean D1 returned `201` for setup, `200` for current session, `200` for logout, and `200` for subsequent login. Production UI/session tests cover the corresponding browser behavior. |
-| Runtime D1 boundary | Pass | Runtime source references `env.DB`; `database_id` appears only in Wrangler/provisioning configuration code. |
-| Deterministic production D1 | Pass | CLI selects the configured UUID or deterministic account-scoped name and refuses an unavailable/mismatched configured database. Real D1 was created once and reused. |
-| Remote migrations | Pass | Live Wrangler query reported no pending migrations. Deployment scripts reference binding `DB`. |
-| Existing data preservation | Pass with P1-2 | No D1/owner reset exists in provisioning; setup status now reports an owner. Worker route/settings preservation is not safe against stale generated config. |
-| Secret in Git | Pass | No real bootstrap proof or Cloudflare credential is tracked. `.dev.vars`, `.wrangler.production.jsonc`, Wrangler state, and build output are ignored. |
-| Secret in SPA | Pass | The clean build contained no proof under `dist/client`; see P2-3 for the separate Worker build artifact. |
-| Proof persistence | Pass | Schema contains only owner verifier and session digests; setup proof remains a Worker secret and is absent from D1. |
-| Setup-link handling | Pass | Fragment is absent from HTTP loading, removed immediately by the SPA, held in memory, and sent only in the setup header. Owner existence permanently closes setup. |
-| Cloudflare credentials | Pass | Wrangler owns interactive authentication; runtime bindings contain no management token or account-management API access. |
-| Worker deployed | Pass | Active version `9e07a4a3-1d15-4296-a22a-94216ac6b004` was observed at 100%. |
-| Production setup state | Pass | HTTPS setup status returned `setupRequired: false`; the real owner setup completed. |
-| HTTPS invariant | Pass | HTTPS Admin status returned `200`; HTTP returned `426 HTTPS_REQUIRED`. |
-| Abuse control | Pass with limitation | The deployed Worker accepted `LOGIN_RATE_LIMITER`; tests cover threshold/recovery. Location-local permissive behavior remains a documented platform limitation. |
-| Deploy button | Fail | Correct redirect observed, but target default branch is stale and no clean-account workflow was completed. |
-| Scope discipline | Pass | No Garmin, MCP protocol, integration framework, additional provider, Terraform, Kubernetes, or hosted installer was introduced. |
+| Area                          | Result               | Evidence                                                                                                                                                                              |
+|-------------------------------|----------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Clean dependency installation | Pass                 | `pnpm install` completed from the committed lockfile in a temporary checkout.                                                                                                         |
+| Local configuration           | Pass                 | `pnpm setup:local` created `.dev.vars` with mode `0600`; `.gitignore` excludes actual files and retains only the empty example.                                                       |
+| Bootstrap entropy             | Pass                 | Node `randomBytes(32)` produces a 256-bit, 43-character Base64URL proof; distinct-value and format tests pass.                                                                        |
+| Local D1 initialization       | Pass                 | Wrangler created local state through logical binding `DB` and applied `0001_owner_auth.sql`.                                                                                          |
+| Local migration repeatability | Pass                 | A second setup reported no pending migrations and preserved the original proof.                                                                                                       |
+| Authorized local URL          | Pass                 | Setup printed the exact `/login#bootstrap=<proof>` contract after migrations succeeded.                                                                                               |
+| Local owner/session journey   | Pass                 | Clean D1 returned `201` for setup, `200` for current session, `200` for logout, and `200` for subsequent login. Production UI/session tests cover the corresponding browser behavior. |
+| Runtime D1 boundary           | Pass                 | Runtime source references `env.DB`; `database_id` appears only in Wrangler/provisioning configuration code.                                                                           |
+| Deterministic production D1   | Pass                 | CLI selects the configured UUID or deterministic account-scoped name and refuses an unavailable/mismatched configured database. Real D1 was created once and reused.                  |
+| Remote migrations             | Pass                 | Live Wrangler query reported no pending migrations. Deployment scripts reference binding `DB`.                                                                                        |
+| Existing data preservation    | Pass with P1-2       | No D1/owner reset exists in provisioning; setup status now reports an owner. Worker route/settings preservation is not safe against stale generated config.                           |
+| Secret in Git                 | Pass                 | No real bootstrap proof or Cloudflare credential is tracked. `.dev.vars`, `.wrangler.production.jsonc`, Wrangler state, and build output are ignored.                                 |
+| Secret in SPA                 | Pass                 | The clean build contained no proof under `dist/client`; see P2-3 for the separate Worker build artifact.                                                                              |
+| Proof persistence             | Pass                 | Schema contains only owner verifier and session digests; setup proof remains a Worker secret and is absent from D1.                                                                   |
+| Setup-link handling           | Pass                 | Fragment is absent from HTTP loading, removed immediately by the SPA, held in memory, and sent only in the setup header. Owner existence permanently closes setup.                    |
+| Cloudflare credentials        | Pass                 | Wrangler owns interactive authentication; runtime bindings contain no management token or account-management API access.                                                              |
+| Worker deployed               | Pass                 | Active version `9e07a4a3-1d15-4296-a22a-94216ac6b004` was observed at 100%.                                                                                                           |
+| Production setup state        | Pass                 | HTTPS setup status returned `setupRequired: false`; the real owner setup completed.                                                                                                   |
+| HTTPS invariant               | Pass                 | HTTPS Admin status returned `200`; HTTP returned `426 HTTPS_REQUIRED`.                                                                                                                |
+| Abuse control                 | Pass with limitation | The deployed Worker accepted `LOGIN_RATE_LIMITER`; tests cover threshold/recovery. Location-local permissive behavior remains a documented platform limitation.                       |
+| Deploy button                 | Fail                 | Correct redirect observed, but target default branch is stale and no clean-account workflow was completed.                                                                            |
+| Scope discipline              | Pass                 | No Garmin, MCP protocol, integration framework, additional provider, Terraform, Kubernetes, or hosted installer was introduced.                                                       |
 
 ## Security Assessment
 
