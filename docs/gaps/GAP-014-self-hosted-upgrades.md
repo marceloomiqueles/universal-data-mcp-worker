@@ -39,7 +39,7 @@ pending Wrangler D1 migrations
 one Worker deployment
 ```
 
-The orchestration is tested against isolated D1 state for pending, already-applied, and failing migrations. CLI provisioning already enforces equivalent migration-before-deploy ordering. Cloudflare Workers Builds stores its effective command and token outside the repository, so a real default-branch build with `pnpm deploy` and D1 Edit permission is still required before the Git upgrade path is considered remotely validated.
+The orchestration is tested against isolated D1 state for pending, already-applied, and failing migrations. CLI provisioning already enforces equivalent migration-before-deploy ordering. Cloudflare Workers Builds stores its effective command and token outside the repository. A real build on 2026-08-16 confirmed `pnpm deploy`, sufficient D1 permission, successful no-pending behavior, and one subsequent Worker deployment. Forward migration ordering is therefore defined and the effective Git gate is verified; a real remote pending migration will be observed on the next legitimate schema change rather than manufactured in production.
 
 Still open: upstream/fork update policy, automatic versus owner-triggered updates, preview/production isolation, backward-compatible migration policy, and recovery when a migration succeeds but the subsequent Worker upload fails.
 

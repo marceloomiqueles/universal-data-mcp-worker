@@ -119,7 +119,7 @@ They must be runnable during startup/deploy where appropriate and during integra
 
 The desired Rails-like experience detects pending migrations, applies only those required, records them, and requires neither manual SQL nor normal D1 recreation.
 
-Production schema evolution uses Wrangler's standard D1 migration tracking in the deployment control plane. The repository deploy entry point applies pending remote migrations and invokes Worker deployment only after they succeed; normal Worker startup and integration activation do not run migrations. Cloudflare Workers Builds must be configured to run `pnpm build` followed by `pnpm deploy`. Forward-migration orchestration is covered against isolated D1 state, while the effective remote Builds setting and rollback after a successful migration followed by a failed Worker upload remain operational validation gaps.
+Production schema evolution uses Wrangler's standard D1 migration tracking in the deployment control plane. The repository deploy entry point applies pending remote migrations and invokes Worker deployment only after they succeed; normal Worker startup and integration activation do not run migrations. Cloudflare Workers Builds runs `pnpm build` followed by `pnpm deploy`; this effective remote ordering, D1 access, no-pending behavior, and single subsequent publication have been validated. Pending and failing migrations are covered against isolated D1 state. Rollback after a successful migration followed by a failed Worker upload remains an operational gap.
 
 ## Sync
 
