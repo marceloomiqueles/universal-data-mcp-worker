@@ -5,6 +5,8 @@ import {
   secretsEqual,
   verifyPassword,
 } from './crypto'
+import type { IntegrationRegistry } from '../../core/integrations/registry'
+import { listIntegrations } from './integrations'
 
 const SESSION_COOKIE = 'admin_session'
 const BOOTSTRAP_PROOF_HEADER = 'x-owner-bootstrap-proof'
@@ -406,6 +408,7 @@ async function logout(request: Request, env: AuthEnv): Promise<Response> {
 export async function handleAdminApi(
   request: Request,
   env: AuthEnv,
+  registry: IntegrationRegistry,
   now = Date.now(),
 ): Promise<Response> {
   const { pathname } = new URL(request.url)
@@ -434,6 +437,10 @@ export async function handleAdminApi(
     const session = await validateSession(request, env.DB, now)
     if (!session) {
       return error('UNAUTHENTICATED', 'Authentication is required.', 401)
+    }
+
+    if (pathname === '/api/integrations' && method === 'GET') {
+      return listIntegrations(registry)
     }
 
     return json({ boundary: 'admin-api', status: 'not-implemented' }, 501)
