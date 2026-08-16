@@ -13,7 +13,7 @@ import {
 
 const execFileAsync = promisify(execFile)
 const defaultDatabaseName = 'universal-data-mcp-worker'
-const draftDatabaseId = '00000000-0000-0000-0000-000000000000'
+const invalidPlaceholderDatabaseId = '00000000-0000-0000-0000-000000000000'
 const templateConfigPath = 'wrangler.jsonc'
 const deploymentConfigPath = '.wrangler.production.jsonc'
 
@@ -107,13 +107,7 @@ export function updateProvisioningConfig(source, database) {
     'database_name',
     database.name,
   )
-  updated = updateSectionProperty(
-    updated,
-    'd1_databases',
-    'DB',
-    'database_id',
-    database.uuid,
-  )
+  updated = setDatabaseId(updated, database.uuid)
   return updateSectionProperty(
     updated,
     'ratelimits',
@@ -121,6 +115,36 @@ export function updateProvisioningConfig(source, database) {
     'namespace_id',
     rateLimitNamespace(database.uuid),
   )
+}
+
+function setDatabaseId(source, databaseId) {
+  if (/"database_id"\s*:/u.test(source)) {
+    return updateSectionProperty(
+      source,
+      'd1_databases',
+      'DB',
+      'database_id',
+      databaseId,
+    )
+  }
+
+  const sectionPattern = new RegExp(
+    `("d1_databases"\\s*:\\s*\\[\\s*\\{)([\\s\\S]*?)(\\}\\s*,?\\s*\\])`,
+    'u',
+  )
+  const sectionMatch = source.match(sectionPattern)
+  if (!sectionMatch?.[2] || !/"binding"\s*:\s*"DB"/u.test(sectionMatch[2])) {
+    throw new Error('Could not find DB in the d1_databases section.')
+  }
+
+  const updatedBody = sectionMatch[2].replace(
+    /("database_name"\s*:\s*"[^"]+"\s*,?)/u,
+    `$1\n      "database_id": ${JSON.stringify(databaseId)},`,
+  )
+  if (updatedBody === sectionMatch[2]) {
+    throw new Error('Could not find database_name for DB.')
+  }
+  return source.replace(sectionPattern, `$1${updatedBody}$3`)
 }
 
 export function regenerateProvisioningConfig(template, database) {
@@ -131,9 +155,7 @@ export function configuredDatabaseId(source) {
   const match = source.match(
     /"d1_databases"\s*:\s*\[\s*\{[\s\S]*?"binding"\s*:\s*"DB"[\s\S]*?"database_id"\s*:\s*"([^"]+)"/u,
   )
-  if (!match?.[1])
-    throw new Error('Could not read the DB binding from wrangler.jsonc.')
-  return match[1]
+  return match?.[1]
 }
 
 export function configuredDatabaseName(source) {
@@ -146,7 +168,13 @@ export function configuredDatabaseName(source) {
 }
 
 export function selectDatabase(databases, configuredId, requestedName) {
-  if (configuredId !== draftDatabaseId) {
+  if (configuredId === invalidPlaceholderDatabaseId) {
+    throw new Error(
+      'The DB binding contains the invalid zero UUID placeholder. Remove database_id to allow automatic provisioning, or use a real D1 ID.',
+    )
+  }
+
+  if (configuredId) {
     const configured = databases.find(
       (database) => database.uuid === configuredId,
     )
@@ -332,7 +360,7 @@ export async function provisionCloudflare(argv = process.argv.slice(2)) {
     : undefined
   const previousDatabaseId = previousConfig
     ? configuredDatabaseId(previousConfig)
-    : draftDatabaseId
+    : undefined
   const previousDatabaseName = previousConfig
     ? configuredDatabaseName(previousConfig)
     : undefined
