@@ -2,7 +2,7 @@ export interface IntegrationDescriptor {
   id: string
   name: string
   description: string
-  status: 'not_configured'
+  status: 'not_configured' | 'configured' | 'connected' | 'connection_error'
 }
 
 interface IntegrationsResponse {
@@ -18,7 +18,9 @@ function isIntegrationDescriptor(
     typeof candidate.id === 'string' &&
     typeof candidate.name === 'string' &&
     typeof candidate.description === 'string' &&
-    candidate.status === 'not_configured'
+    ['not_configured', 'configured', 'connected', 'connection_error'].includes(
+      candidate.status ?? '',
+    )
   )
 }
 

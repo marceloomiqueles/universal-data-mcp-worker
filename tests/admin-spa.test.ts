@@ -7,6 +7,21 @@ import { createAdminRouter } from '../src/admin/router'
 import { createAdminSession, provideAdminSession } from '../src/admin/session'
 import { vuetify } from '../src/admin/vuetify'
 
+Object.defineProperty(globalThis, 'visualViewport', {
+  configurable: true,
+  value: {
+    width: 1024,
+    height: 768,
+    offsetLeft: 0,
+    offsetTop: 0,
+    pageLeft: 0,
+    pageTop: 0,
+    scale: 1,
+    addEventListener: () => undefined,
+    removeEventListener: () => undefined,
+  },
+})
+
 interface RenderOptions {
   path?: string
   responses?: Response[]
@@ -107,6 +122,60 @@ function inputs(element: HTMLElement): HTMLInputElement[] {
 function enter(input: HTMLInputElement, value: string): void {
   input.value = value
   input.dispatchEvent(new Event('input', { bubbles: true }))
+}
+
+function button(text: string): HTMLButtonElement | undefined {
+  const active = [
+    ...document.querySelectorAll<HTMLButtonElement>(
+      '.v-overlay--active button',
+    ),
+  ].find((candidate) => candidate.textContent?.trim().includes(text))
+  return (
+    active ??
+    [...document.querySelectorAll<HTMLButtonElement>('button')].find(
+      (candidate) => candidate.textContent?.trim().includes(text),
+    )
+  )
+}
+
+function shopifyState(
+  status: 'not_configured' | 'configured' | 'connected' | 'connection_error',
+  overrides: Record<string, unknown> = {},
+) {
+  return {
+    shopDomain: status === 'not_configured' ? null : 'example.myshopify.com',
+    clientId: status === 'not_configured' ? null : 'client-id',
+    secretConfigured: status !== 'not_configured',
+    status,
+    verifiedAt: status === 'connected' ? '2026-08-16T12:00:00.000Z' : null,
+    lastErrorCode: status === 'connection_error' ? 'AUTH_FAILED' : null,
+    ...overrides,
+  }
+}
+
+function integrationList(
+  shopifyStatus:
+    | 'not_configured'
+    | 'configured'
+    | 'connected'
+    | 'connection_error' = 'not_configured',
+) {
+  return {
+    integrations: [
+      {
+        id: 'garmin',
+        name: 'Garmin',
+        description: 'Garmin integration for health and activity data.',
+        status: 'not_configured',
+      },
+      {
+        id: 'shopify',
+        name: 'Shopify',
+        description: 'Shopify integration for product and inventory data.',
+        status: shopifyStatus,
+      },
+    ],
+  }
 }
 
 async function submit(element: HTMLElement): Promise<void> {
@@ -463,18 +532,10 @@ describe('Authenticated application shell', () => {
 
 describe('Integrations page', () => {
   it('loads and renders the registry response through the production API path', async () => {
-    const integrationRequest = vi.fn<typeof fetch>().mockResolvedValue(
-      json({
-        integrations: [
-          {
-            id: 'garmin',
-            name: 'Garmin',
-            description: 'Garmin integration for health and activity data.',
-            status: 'not_configured',
-          },
-        ],
-      }),
-    )
+    const integrationRequest = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(json(integrationList()))
+      .mockResolvedValueOnce(json(shopifyState('not_configured')))
     vi.stubGlobal('fetch', integrationRequest)
 
     const { element, router } = await render({
@@ -490,9 +551,204 @@ describe('Integrations page', () => {
       'Garmin integration for health and activity data.',
     )
     expect(element.textContent).toContain('Not configured')
+    expect(element.textContent).toContain('Shopify')
     expect(integrationRequest).toHaveBeenCalledWith('/api/integrations', {
       credentials: 'same-origin',
     })
+  })
+
+  it('saves first configuration without storing the entered secret in browser storage', async () => {
+    const localStorageWrite = vi.spyOn(Storage.prototype, 'setItem')
+    const sessionStorageWrite = vi.spyOn(window.sessionStorage, 'setItem')
+    const request = vi.fn<typeof fetch>(async (input, init) => {
+      if (input === '/api/integrations') return json(integrationList())
+      if (input === '/api/integrations/shopify' && !init?.method) {
+        return json(shopifyState('not_configured'))
+      }
+      if (input === '/api/integrations/shopify/configuration') {
+        return json(shopifyState('configured'))
+      }
+      throw new Error(`Unexpected request: ${String(input)}`)
+    })
+    vi.stubGlobal('fetch', request)
+    const { element } = await render({
+      path: '/integrations',
+      responses: [authenticated()],
+    })
+    await vi.waitFor(() => expect(element.textContent).toContain('Shopify'))
+    button('Configure')?.click()
+    await vi.waitFor(() =>
+      expect(document.body.textContent).toContain('Shopify connection'),
+    )
+
+    button('Save and continue')?.click()
+    await vi.waitFor(() =>
+      expect(document.body.textContent).toContain(
+        'Shop domain and client ID are required.',
+      ),
+    )
+    const dialogInputs = [
+      ...document.body.querySelectorAll<HTMLInputElement>('input'),
+    ]
+    enter(dialogInputs[0]!, 'example.myshopify.com')
+    enter(dialogInputs[1]!, 'client-id')
+    enter(dialogInputs[2]!, 'entered-secret')
+    button('Save and continue')?.click()
+
+    await vi.waitFor(() =>
+      expect(document.body.textContent).toContain('Verify connection'),
+    )
+    const saveCall = request.mock.calls.find(
+      ([url]) => url === '/api/integrations/shopify/configuration',
+    )
+    expect(JSON.parse(String(saveCall?.[1]?.body))).toEqual({
+      shopDomain: 'example.myshopify.com',
+      clientId: 'client-id',
+      clientSecret: 'entered-secret',
+    })
+    expect(localStorageWrite).not.toHaveBeenCalled()
+    expect(sessionStorageWrite).not.toHaveBeenCalled()
+    expect(document.body.textContent).not.toContain('entered-secret')
+  })
+
+  it('retains an existing secret when blank and replaces it only when entered', async () => {
+    const savedBodies: unknown[] = []
+    const request = vi.fn<typeof fetch>(async (input, init) => {
+      if (input === '/api/integrations')
+        return json(integrationList('configured'))
+      if (input === '/api/integrations/shopify' && !init?.method) {
+        return json(shopifyState('configured'))
+      }
+      if (input === '/api/integrations/shopify/configuration') {
+        savedBodies.push(JSON.parse(String(init?.body)))
+        return json(shopifyState('configured'))
+      }
+      throw new Error(`Unexpected request: ${String(input)}`)
+    })
+    vi.stubGlobal('fetch', request)
+    const { element } = await render({
+      path: '/integrations',
+      responses: [authenticated()],
+    })
+    await vi.waitFor(() => expect(element.textContent).toContain('Manage'))
+    button('Manage')?.click()
+    await vi.waitFor(() =>
+      expect(document.body.textContent).toContain('Edit configuration'),
+    )
+    button('Edit configuration')?.click()
+    await vi.waitFor(() =>
+      expect(document.body.textContent).toContain('already stored'),
+    )
+    button('Save and continue')?.click()
+    await vi.waitFor(() => expect(savedBodies).toHaveLength(1))
+    expect(savedBodies[0]).toEqual({
+      shopDomain: 'example.myshopify.com',
+      clientId: 'client-id',
+    })
+
+    await vi.waitFor(() =>
+      expect(document.body.textContent).toContain('Edit configuration'),
+    )
+    button('Edit configuration')?.click()
+    await settle()
+    const secretInput = [
+      ...document.body.querySelectorAll<HTMLInputElement>(
+        '.v-overlay--active input',
+      ),
+    ].at(-1)!
+    enter(secretInput, 'replacement-secret')
+    await settle()
+    button('Save and continue')?.click()
+    await vi.waitFor(() => expect(savedBodies).toHaveLength(2))
+    expect(savedBodies[1]).toMatchObject({ clientSecret: 'replacement-secret' })
+  })
+
+  it('shows verification progress, success, failure, and retry through the real client path', async () => {
+    let release!: (response: Response) => void
+    const pending = new Promise<Response>((resolve) => {
+      release = resolve
+    })
+    let verificationCount = 0
+    const request = vi.fn<typeof fetch>(async (input, init) => {
+      if (input === '/api/integrations')
+        return json(
+          integrationList(verificationCount > 1 ? 'connected' : 'configured'),
+        )
+      if (input === '/api/integrations/shopify' && !init?.method)
+        return json(
+          shopifyState(verificationCount > 1 ? 'connected' : 'configured'),
+        )
+      if (input === '/api/integrations/shopify/verify') {
+        verificationCount += 1
+        if (verificationCount === 1) return pending
+        return json(shopifyState('connected'))
+      }
+      throw new Error(`Unexpected request: ${String(input)}`)
+    })
+    vi.stubGlobal('fetch', request)
+    const { element } = await render({
+      path: '/integrations',
+      responses: [authenticated()],
+    })
+    await vi.waitFor(() => expect(element.textContent).toContain('Manage'))
+    button('Manage')?.click()
+    await vi.waitFor(() =>
+      expect(document.body.textContent).toContain('Verify connection'),
+    )
+    button('Verify connection')?.click()
+    await vi.waitFor(() =>
+      expect(document.body.textContent).toContain(
+        'Verifying Shopify connection…',
+      ),
+    )
+    release(json(shopifyState('connection_error'), 422))
+    await vi.waitFor(() =>
+      expect(document.body.textContent).toContain(
+        'Shopify rejected the credentials',
+      ),
+    )
+    button('Verify connection')?.click()
+    await vi.waitFor(() =>
+      expect(document.body.textContent).toContain('Shopify is connected.'),
+    )
+    expect(document.body.textContent).toContain('Verified')
+  })
+
+  it('requires confirmation before disconnect and refreshes the listing', async () => {
+    let disconnected = false
+    const request = vi.fn<typeof fetch>(async (input, init) => {
+      if (input === '/api/integrations')
+        return json(
+          integrationList(disconnected ? 'not_configured' : 'connected'),
+        )
+      if (input === '/api/integrations/shopify' && !init?.method)
+        return json(shopifyState(disconnected ? 'not_configured' : 'connected'))
+      if (input === '/api/integrations/shopify/disconnect') {
+        disconnected = true
+        return json({ status: 'not_configured' })
+      }
+      throw new Error(`Unexpected request: ${String(input)}`)
+    })
+    vi.stubGlobal('fetch', request)
+    const { element } = await render({
+      path: '/integrations',
+      responses: [authenticated()],
+    })
+    await vi.waitFor(() => expect(element.textContent).toContain('Connected'))
+    button('Manage')?.click()
+    await vi.waitFor(() =>
+      expect(document.body.textContent).toContain('Disconnect'),
+    )
+    button('Disconnect')?.click()
+    expect(disconnected).toBe(false)
+    await vi.waitFor(() =>
+      expect(document.body.textContent).toContain('Confirm disconnect'),
+    )
+    button('Confirm disconnect')?.click()
+    await vi.waitFor(() => expect(disconnected).toBe(true))
+    await vi.waitFor(() =>
+      expect(element.textContent).toContain('Not configured'),
+    )
   })
 
   it('shows a loading state while the registry request is pending', async () => {
