@@ -8,7 +8,7 @@ Garmin Connect → Cloudflare Worker → D1 where appropriate → MCP → ChatGP
 
 ## Current Status
 
-The project has an initial deployable scaffold, single-owner Admin authentication, a compiled integration registry, and a read-only MCP server. One Cloudflare Worker serves the Vue/Vuetify Admin SPA, authenticated Admin API, and an OAuth-protected MCP 2025-11-25 Streamable HTTP endpoint. The `list_integrations` tool reports the real compiled registry. Garmin remains registered but not configured. Shopify can be configured and verified through the Admin Web, synchronized through a bounded authenticated operation, and queried from persisted D1 inventory through the `get_inventory` MCP tool. A real Cloudflare deployment and ChatGPT Work have validated that complete path.
+The project has an initial deployable scaffold, single-owner Admin authentication, a compiled integration registry, and a read-only MCP server. One Cloudflare Worker serves the Vue/Vuetify Admin SPA, authenticated Admin API, and an OAuth-protected MCP 2025-11-25 Streamable HTTP endpoint. The `list_integrations` tool reports the real compiled registry. Garmin remains registered but not configured. Shopify can be configured, verified, and synchronized on demand through the Admin Web, then queried from persisted D1 inventory through the `get_inventory` MCP tool. A real Cloudflare deployment and ChatGPT Work have validated that complete path.
 
 The current foundation proves the single-deployment build and routing model without prematurely inventing product contracts.
 

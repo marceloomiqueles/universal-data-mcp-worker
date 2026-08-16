@@ -587,6 +587,19 @@ export async function getShopifySyncStatus(
   return run ? result(run) : null
 }
 
+export async function getLastSuccessfulShopifySyncAt(
+  db: D1Database,
+): Promise<string | null> {
+  const row = await db
+    .prepare(
+      `SELECT completed_at FROM shopify_sync_runs
+       WHERE status = 'complete' AND coverage_complete = 1
+       ORDER BY completed_at DESC LIMIT 1`,
+    )
+    .first<{ completed_at: number }>()
+  return row ? new Date(row.completed_at).toISOString() : null
+}
+
 export async function syncShopifyInventory(
   db: D1Database,
   encryptionKey: string,

@@ -153,6 +153,28 @@ function shopifyState(
   }
 }
 
+function shopifySync(
+  status: 'complete' | 'partial' | 'failed',
+  overrides: Record<string, unknown> = {},
+) {
+  return {
+    status,
+    coverageComplete: status === 'complete',
+    continuationAvailable: status === 'partial',
+    startedAt: '2026-08-16T18:00:00.000Z',
+    completedAt: '2026-08-16T18:01:00.000Z',
+    lastErrorCode: status === 'failed' ? 'SOURCE_UNAVAILABLE' : null,
+    counts: {
+      requests: 2,
+      pages: 2,
+      products: 18,
+      variants: 27,
+      inventoryLevels: 29,
+    },
+    ...overrides,
+  }
+}
+
 function integrationList(
   shopifyStatus:
     | 'not_configured'
@@ -780,6 +802,166 @@ describe('Integrations page', () => {
     await vi.waitFor(() =>
       expect(element.textContent).toContain('Not configured'),
     )
+  })
+
+  it('shows never-synced state for a connected Shopify integration', async () => {
+    const request = vi.fn<typeof fetch>(async (input, init) => {
+      if (input === '/api/integrations')
+        return json(integrationList('connected'))
+      if (input === '/api/integrations/shopify' && !init?.method)
+        return json(
+          shopifyState('connected', {
+            sync: null,
+            lastSuccessfulSyncAt: null,
+          }),
+        )
+      throw new Error(`Unexpected request: ${String(input)}`)
+    })
+    vi.stubGlobal('fetch', request)
+    await render({ path: '/integrations', responses: [authenticated()] })
+    await vi.waitFor(() => expect(button('Manage')).toBeDefined())
+    await settle()
+    button('Manage')?.click()
+    await vi.waitFor(() =>
+      expect(document.body.textContent).toContain('Shopify connection'),
+    )
+    await vi.waitFor(() =>
+      expect(document.body.textContent).toContain(
+        'Inventory has never been synchronized.',
+      ),
+    )
+    expect(document.body.textContent).toContain('Last successful sync: Never')
+    expect(button('Sync now')).toBeDefined()
+  })
+
+  it('does not expose synchronization for disconnected Shopify', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn<typeof fetch>(async (input, init) => {
+        if (input === '/api/integrations') return json(integrationList())
+        if (input === '/api/integrations/shopify' && !init?.method)
+          return json(shopifyState('not_configured'))
+        throw new Error(`Unexpected request: ${String(input)}`)
+      }),
+    )
+    await render({ path: '/integrations', responses: [authenticated()] })
+    await vi.waitFor(() => expect(button('Configure')).toBeDefined())
+    button('Configure')?.click()
+    await settle()
+    expect(button('Sync now')).toBeUndefined()
+  })
+
+  it('prevents duplicate sync submission and renders successful counts and freshness', async () => {
+    let release!: (response: Response) => void
+    const pending = new Promise<Response>((resolve) => {
+      release = resolve
+    })
+    let syncCalls = 0
+    const request = vi.fn<typeof fetch>(async (input, init) => {
+      if (input === '/api/integrations')
+        return json(integrationList('connected'))
+      if (input === '/api/integrations/shopify' && !init?.method)
+        return json(
+          shopifyState('connected', {
+            sync: null,
+            lastSuccessfulSyncAt: null,
+          }),
+        )
+      if (input === '/api/integrations/shopify/sync') {
+        syncCalls += 1
+        return pending
+      }
+      throw new Error(`Unexpected request: ${String(input)}`)
+    })
+    vi.stubGlobal('fetch', request)
+    await render({ path: '/integrations', responses: [authenticated()] })
+    await vi.waitFor(() => expect(button('Manage')).toBeDefined())
+    await settle()
+    button('Manage')?.click()
+    await vi.waitFor(() =>
+      expect(
+        document.body.querySelector('[data-testid="shopify-sync-now"]'),
+      ).not.toBeNull(),
+    )
+    const syncButton = document.body.querySelector<HTMLButtonElement>(
+      '[data-testid="shopify-sync-now"]',
+    )!
+    syncButton.click()
+    syncButton.click()
+    await vi.waitFor(() => expect(syncCalls).toBe(1))
+    await vi.waitFor(() => expect(syncButton.disabled).toBe(true))
+
+    release(json({ sync: shopifySync('complete') }))
+    await vi.waitFor(() =>
+      expect(document.body.textContent).toContain(
+        'Inventory synchronization completed.',
+      ),
+    )
+    expect(document.body.textContent).toContain('Latest outcome')
+    expect(document.body.textContent).toContain('Complete')
+    expect(document.body.textContent).toContain('Products: 18')
+    expect(document.body.textContent).toContain('Variants: 27')
+    expect(document.body.textContent).toContain('Inventory levels: 29')
+    expect(document.body.textContent).not.toContain(
+      'Stored inventory coverage is incomplete.',
+    )
+  })
+
+  it('reports partial and failed sync outcomes without claiming complete coverage', async () => {
+    const outcomes = [
+      json({ sync: shopifySync('partial') }),
+      json({ sync: shopifySync('failed') }, 502),
+    ]
+    const request = vi.fn<typeof fetch>(async (input, init) => {
+      if (input === '/api/integrations')
+        return json(integrationList('connected'))
+      if (input === '/api/integrations/shopify' && !init?.method)
+        return json(
+          shopifyState('connected', {
+            sync: null,
+            lastSuccessfulSyncAt: '2026-08-15T12:00:00.000Z',
+          }),
+        )
+      if (input === '/api/integrations/shopify/sync') return outcomes.shift()!
+      throw new Error(`Unexpected request: ${String(input)}`)
+    })
+    vi.stubGlobal('fetch', request)
+    await render({ path: '/integrations', responses: [authenticated()] })
+    await vi.waitFor(() => expect(button('Manage')).toBeDefined())
+    await settle()
+    button('Manage')?.click()
+    await vi.waitFor(() =>
+      expect(
+        document.body.querySelector('[data-testid="shopify-sync-now"]'),
+      ).not.toBeNull(),
+    )
+
+    document.body
+      .querySelector<HTMLButtonElement>('[data-testid="shopify-sync-now"]')!
+      .click()
+    await vi.waitFor(() =>
+      expect(document.body.textContent).toContain(
+        'Inventory synchronization is partial.',
+      ),
+    )
+    expect(document.body.textContent).toContain('Partial')
+    expect(document.body.textContent).toContain(
+      'Stored inventory coverage is incomplete.',
+    )
+
+    document.body
+      .querySelector<HTMLButtonElement>('[data-testid="shopify-sync-now"]')!
+      .click()
+    await vi.waitFor(() =>
+      expect(document.body.textContent).toContain(
+        'Inventory synchronization failed.',
+      ),
+    )
+    expect(document.body.textContent).toContain('Failed')
+    expect(document.body.textContent).toContain(
+      'Stored inventory coverage is incomplete.',
+    )
+    expect(document.body.textContent).toContain('Last successful sync:')
   })
 
   it('shows a loading state while the registry request is pending', async () => {

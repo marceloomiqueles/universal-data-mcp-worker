@@ -6,6 +6,7 @@ import {
 } from '../../integrations/shopify/connection'
 import { ShopifyConnectionError } from '../../integrations/shopify/provider'
 import {
+  getLastSuccessfulShopifySyncAt,
   getShopifySyncStatus,
   ShopifySyncConflictError,
   syncShopifyInventory,
@@ -49,6 +50,7 @@ export async function getShopify(
       lastErrorCode: null,
     }),
     sync: await getShopifySyncStatus(env.DB),
+    lastSuccessfulSyncAt: await getLastSuccessfulShopifySyncAt(env.DB),
   })
 }
 

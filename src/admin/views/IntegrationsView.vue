@@ -6,6 +6,7 @@ import {
   disconnectShopify,
   fetchShopifyConnection,
   saveShopifyConfiguration,
+  syncShopifyInventory,
   verifyShopifyConnection,
   type ShopifyConnectionState,
   type ShopifyErrorCode,
@@ -26,6 +27,8 @@ const actionError = ref('')
 const saving = ref(false)
 const verifying = ref(false)
 const disconnecting = ref(false)
+const syncing = ref(false)
+const syncMessage = ref('')
 const confirmingDisconnect = ref(false)
 
 const secretHelp = computed(() =>
@@ -68,6 +71,18 @@ function providerError(code: ShopifyErrorCode | null): string {
   return code ? messages[code] : messages.UNKNOWN
 }
 
+function syncStatusLabel(status: 'complete' | 'partial' | 'failed'): string {
+  return { complete: 'Complete', partial: 'Partial', failed: 'Failed' }[status]
+}
+
+function syncStatusColor(status: 'complete' | 'partial' | 'failed'): string {
+  return status === 'complete'
+    ? 'success'
+    : status === 'partial'
+      ? 'warning'
+      : 'error'
+}
+
 async function loadIntegrations(): Promise<void> {
   loading.value = true
   failed.value = false
@@ -93,6 +108,7 @@ async function openShopify(): Promise<void> {
   dialogLoading.value = true
   formError.value = ''
   actionError.value = ''
+  syncMessage.value = ''
   confirmingDisconnect.value = false
   clearEnteredSecret()
   try {
@@ -184,6 +200,35 @@ async function confirmDisconnect(): Promise<void> {
     actionError.value = 'Shopify could not be disconnected.'
   } finally {
     disconnecting.value = false
+  }
+}
+
+async function syncNow(): Promise<void> {
+  if (syncing.value || shopify.value?.status !== 'connected') return
+  syncing.value = true
+  actionError.value = ''
+  syncMessage.value = ''
+  try {
+    const sync = await syncShopifyInventory()
+    shopify.value = {
+      ...shopify.value,
+      sync,
+      lastSuccessfulSyncAt:
+        sync.status === 'complete' && sync.coverageComplete
+          ? sync.completedAt
+          : shopify.value.lastSuccessfulSyncAt,
+    }
+    syncMessage.value =
+      sync.status === 'complete'
+        ? 'Inventory synchronization completed.'
+        : sync.status === 'partial'
+          ? 'Inventory synchronization is partial. Run it again to continue.'
+          : 'Inventory synchronization failed. Existing stored inventory was preserved.'
+  } catch {
+    actionError.value =
+      'The inventory synchronization request could not be completed.'
+  } finally {
+    syncing.value = false
   }
 }
 
@@ -320,6 +365,81 @@ onMounted(loadIntegrations)
             <p v-if="verifying" aria-live="polite">
               Verifying Shopify connection…
             </p>
+
+            <VCard
+              v-if="shopify?.status === 'connected'"
+              variant="outlined"
+              class="mt-5"
+            >
+              <VCardTitle class="text-subtitle-1">
+                Inventory synchronization
+              </VCardTitle>
+              <VCardText>
+                <p v-if="!shopify.sync" class="mb-3">
+                  Inventory has never been synchronized.
+                </p>
+                <template v-else>
+                  <div class="d-flex align-center ga-2 mb-3">
+                    <span>Latest outcome</span>
+                    <VChip
+                      :color="syncStatusColor(shopify.sync.status)"
+                      size="small"
+                      variant="tonal"
+                    >
+                      {{ syncStatusLabel(shopify.sync.status) }}
+                    </VChip>
+                  </div>
+                  <VAlert
+                    v-if="!shopify.sync.coverageComplete"
+                    type="warning"
+                    variant="tonal"
+                    class="mb-3"
+                  >
+                    Stored inventory coverage is incomplete. Run Sync now to
+                    continue when Shopify is available.
+                  </VAlert>
+                  <p class="text-body-2 mb-1">
+                    Products: {{ shopify.sync.counts.products }} · Variants:
+                    {{ shopify.sync.counts.variants }} · Inventory levels:
+                    {{ shopify.sync.counts.inventoryLevels }}
+                  </p>
+                  <p class="text-caption text-medium-emphasis mb-3">
+                    Latest attempt
+                    {{ new Date(shopify.sync.startedAt).toLocaleString() }}
+                  </p>
+                </template>
+                <p class="text-body-2 mb-3">
+                  Last successful sync:
+                  <span v-if="shopify.lastSuccessfulSyncAt">
+                    {{
+                      new Date(shopify.lastSuccessfulSyncAt).toLocaleString()
+                    }}
+                  </span>
+                  <span v-else>Never</span>
+                </p>
+                <VAlert
+                  v-if="syncMessage"
+                  :type="
+                    shopify.sync?.status === 'complete' ? 'success' : 'warning'
+                  "
+                  variant="tonal"
+                  class="mb-3"
+                  aria-live="polite"
+                >
+                  {{ syncMessage }}
+                </VAlert>
+                <VBtn
+                  data-testid="shopify-sync-now"
+                  color="primary"
+                  variant="tonal"
+                  :loading="syncing"
+                  :disabled="syncing"
+                  @click="syncNow"
+                >
+                  Sync now
+                </VBtn>
+              </VCardText>
+            </VCard>
 
             <VAlert
               v-if="confirmingDisconnect"

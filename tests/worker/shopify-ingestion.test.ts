@@ -285,6 +285,19 @@ describe('Shopify inventory ingestion', () => {
     await expect(first.json()).resolves.toMatchObject({
       sync: { status: 'complete', coverageComplete: true },
     })
+    const state = await handleRequest(
+      new Request(`${origin}/api/integrations/shopify`, {
+        headers: { cookie },
+      }),
+      workerEnv(),
+    )
+    await expect(state.json()).resolves.toMatchObject({
+      sync: {
+        status: 'complete',
+        counts: { products: 2, variants: 2, inventoryLevels: 3 },
+      },
+      lastSuccessfulSyncAt: expect.any(String),
+    })
     expect(await count('shopify_products')).toBe(2)
     expect(await count('shopify_variants')).toBe(2)
     expect(await count('shopify_inventory_items')).toBe(2)

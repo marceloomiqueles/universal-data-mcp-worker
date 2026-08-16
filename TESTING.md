@@ -127,6 +127,8 @@ The activation harness passed against the maintainer-controlled development stor
 
 Worker tests apply migration `0003_shopify_inventory.sql` and exercise the production authenticated sync endpoint. Coverage includes canonical GID relationships, multi-page and nested inventory-level cursors, multi-location quantities, deterministic repeated upserts, quantity changes, bounded continuation, concurrent-trigger rejection, provider throttling/failure, complete-scan reconciliation, and the invariant that partial/failed scans delete nothing. The endpoint is intentionally manual and backend-only; no scheduler or catalog UI exists yet.
 
+Admin tests exercise the operational Shopify Manage controls against the production client contract. They cover never-synchronized state, pending submission with duplicate prevention, complete/partial/failed outcomes, incomplete-coverage messaging, bounded entity counts, last-successful timestamps, and absence of the sync action while Shopify is disconnected. The view deliberately contains no commerce reporting, scheduling, charts, or analytics.
+
 ## Shopify inventory MCP
 
 The D1 query tests cover empty inventory, explicit tracked-stock semantics, configurable low-stock thresholds, exact case-insensitive SKU filtering, partial product and location filters, multi-location results, result limits with opaque cursor continuation, and freshness from the latest successful complete sync. Production-path MCP tests verify conditional `get_inventory` discovery for connected Shopify, its bounded structured result, preservation of `list_integrations`, and the absence of provider network access during an inventory query.
