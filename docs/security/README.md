@@ -2,7 +2,7 @@
 
 ## Status
 
-This document records implemented Admin authentication controls and requirements for future sensitive surfaces. It does not claim that Garmin, MCP authentication, or production deployment security has been implemented or validated.
+This document records implemented Admin authentication, Shopify credential protection, and MCP authorization controls. Garmin provider security remains unimplemented. Validation claims are limited to the tested Cloudflare and ChatGPT paths documented in repository audit records.
 
 `universal-data-mcp-worker` is public. Treat history, documentation, examples, fixtures, logs, and screenshots as publicly visible.
 
@@ -16,12 +16,12 @@ Passwords are stored as versioned PBKDF2-HMAC-SHA-256 verifiers with a random 16
 
 Sessions use opaque 256-bit random tokens. Only SHA-256 token digests and timestamps are stored in D1. The raw token is returned only in an `HttpOnly`, `SameSite=Strict`, `Path=/api` cookie with a 12-hour absolute lifetime; HTTPS responses also set `Secure`. Logout deletes the session record. Expired sessions are rejected independently of cleanup. A presented expired session is deleted directly, and login deletes at most 100 other expired rows.
 
-All non-public `/api/*` requests require a valid session. The only unauthenticated operations are setup status, first setup, and login. State-changing authentication requests require JSON and an exact same-origin `Origin` header. Credentialed cross-origin Admin API access is not enabled. A native Cloudflare binding rate-limits login attempts per source address with automatic window recovery and no account lockout record. Non-loopback Admin API requests require HTTPS. `/mcp/*` remains outside Admin-session behavior.
+All non-public `/api/*` requests require a valid session. The only unauthenticated operations are setup status, first setup, and login. State-changing authentication requests require JSON and an exact same-origin `Origin` header. Credentialed cross-origin Admin API access is not enabled. A native Cloudflare binding rate-limits login attempts per source address with automatic window recovery and no account lockout record. Non-loopback Admin API requests require HTTPS. `/mcp/*` remains outside Admin-session behavior and uses a separate OAuth 2.1 authorization-code flow with PKCE, revocable owner grants, and the read-only `integrations:read` scope. Admin cookies cannot authenticate MCP, and MCP bearer credentials cannot authenticate the Admin API.
 
 ## Secrets and Sensitive State
 
 - Fixed sensitive configuration uses Cloudflare secrets/environment configuration.
-- Persisted sensitive state is encrypted in D1 where appropriate.
+- Shopify client credentials are submitted only through the authenticated same-origin Admin API. The client secret is encrypted in D1 with versioned AES-256-GCM envelopes; Shopify access tokens remain transient and are not persisted.
 - Encryption keys never live in D1 or logs.
 - Design must allow future key versioning/rotation without anticipating a custom KMS.
 - Never commit credentials, tokens, keys, personal payloads, or real debugging data.

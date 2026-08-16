@@ -18,6 +18,8 @@ Shared mechanisms, slice responsibility, idempotency, and disable/reactivate/pur
 
 The first Shopify ingestion consumer now proves a bounded manual cursor scan, resumable partial coverage, deterministic upserts, and complete-scan-only reconciliation. It deliberately does not select a background cadence, freshness policy, retention period, or generic sync abstraction.
 
+The Shopify order consumer adds a separate bounded manual scan of the standard recent 60-day order window. It rereads the full accessible window to capture edits, refunds, returns, and cancellations, checkpoints nested line-item pagination in D1, and keeps its coverage separate from inventory. This still provides no evidence for a scheduler, webhook policy, generic sync framework, or stale-running recovery beyond the existing single-owner manual guard.
+
 ## Evidence Needed to Close
 
 - Dataset mutability and historical availability measurements.

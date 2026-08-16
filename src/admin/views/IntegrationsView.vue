@@ -7,6 +7,7 @@ import {
   fetchShopifyConnection,
   saveShopifyConfiguration,
   syncShopifyInventory,
+  syncShopifyOrders,
   verifyShopifyConnection,
   type ShopifyConnectionState,
   type ShopifyErrorCode,
@@ -29,6 +30,8 @@ const verifying = ref(false)
 const disconnecting = ref(false)
 const syncing = ref(false)
 const syncMessage = ref('')
+const syncingOrders = ref(false)
+const orderSyncMessage = ref('')
 const confirmingDisconnect = ref(false)
 
 const secretHelp = computed(() =>
@@ -109,6 +112,7 @@ async function openShopify(): Promise<void> {
   formError.value = ''
   actionError.value = ''
   syncMessage.value = ''
+  orderSyncMessage.value = ''
   confirmingDisconnect.value = false
   clearEnteredSecret()
   try {
@@ -229,6 +233,28 @@ async function syncNow(): Promise<void> {
       'The inventory synchronization request could not be completed.'
   } finally {
     syncing.value = false
+  }
+}
+
+async function syncOrdersNow(): Promise<void> {
+  if (syncingOrders.value || shopify.value?.status !== 'connected') return
+  syncingOrders.value = true
+  actionError.value = ''
+  orderSyncMessage.value = ''
+  try {
+    const orderSync = await syncShopifyOrders()
+    shopify.value = { ...shopify.value, orderSync }
+    orderSyncMessage.value =
+      orderSync.status === 'complete'
+        ? 'Order synchronization completed.'
+        : orderSync.status === 'partial'
+          ? 'Order synchronization is partial. Run it again to continue.'
+          : 'Order synchronization failed. Existing stored order data was preserved.'
+  } catch {
+    actionError.value =
+      'The order synchronization request could not be completed.'
+  } finally {
+    syncingOrders.value = false
   }
 }
 
@@ -366,6 +392,24 @@ onMounted(loadIntegrations)
               Verifying Shopify connection…
             </p>
 
+            <VAlert
+              v-if="shopify?.status === 'connected'"
+              type="info"
+              variant="tonal"
+              class="mb-4"
+            >
+              Read-only order access is enabled for this Shopify connection.
+            </VAlert>
+            <VAlert
+              v-else-if="shopify?.lastErrorCode === 'SCOPE_FAILED'"
+              type="warning"
+              variant="tonal"
+              class="mb-4"
+            >
+              Order data is unavailable until the Shopify app grants all
+              required read-only order scopes.
+            </VAlert>
+
             <VCard
               v-if="shopify?.status === 'connected'"
               variant="outlined"
@@ -437,6 +481,103 @@ onMounted(loadIntegrations)
                   @click="syncNow"
                 >
                   Sync now
+                </VBtn>
+              </VCardText>
+            </VCard>
+
+            <VCard
+              v-if="shopify?.status === 'connected'"
+              variant="outlined"
+              class="mt-5"
+            >
+              <VCardTitle class="text-subtitle-1">
+                Order synchronization
+              </VCardTitle>
+              <VCardText>
+                <VAlert type="info" variant="tonal" class="mb-3">
+                  This deployment synchronizes a bounded recent 60-day window.
+                  Required access is read_orders; additional Shopify permissions
+                  do not expand this product coverage.
+                </VAlert>
+                <p v-if="!shopify.orderSync" class="mb-3">
+                  Orders have never been synchronized.
+                </p>
+                <template v-else>
+                  <div class="d-flex align-center ga-2 mb-3">
+                    <span>Latest order sync outcome</span>
+                    <VChip
+                      :color="syncStatusColor(shopify.orderSync.status)"
+                      size="small"
+                      variant="tonal"
+                    >
+                      {{ syncStatusLabel(shopify.orderSync.status) }}
+                    </VChip>
+                  </div>
+                  <VAlert
+                    v-if="!shopify.orderSync.coverageComplete"
+                    type="warning"
+                    variant="tonal"
+                    class="mb-3"
+                  >
+                    The latest order sync is incomplete. Previously completed
+                    sales data remains available when its recorded window covers
+                    the requested period.
+                  </VAlert>
+                  <p class="text-body-2 mb-1">
+                    Orders: {{ shopify.orderSync.counts.orders }} · Line items:
+                    {{ shopify.orderSync.counts.lineItems }}
+                  </p>
+                  <p class="text-caption text-medium-emphasis mb-1">
+                    Coverage
+                    {{
+                      new Date(shopify.orderSync.windowStart).toLocaleString()
+                    }}
+                    to
+                    {{ new Date(shopify.orderSync.windowEnd).toLocaleString() }}
+                  </p>
+                  <p class="text-caption text-medium-emphasis mb-3">
+                    Latest order sync attempt
+                    {{
+                      new Date(
+                        shopify.orderSync.completedAt ??
+                          shopify.orderSync.startedAt,
+                      ).toLocaleString()
+                    }}
+                  </p>
+                </template>
+                <p class="text-body-2 mb-3">
+                  Last successful complete order sync:
+                  <span v-if="shopify.lastSuccessfulOrderSyncAt">
+                    {{
+                      new Date(
+                        shopify.lastSuccessfulOrderSyncAt,
+                      ).toLocaleString()
+                    }}
+                  </span>
+                  <span v-else>Never</span>
+                </p>
+                <VAlert
+                  v-if="orderSyncMessage"
+                  :type="
+                    shopify.orderSync?.status === 'complete'
+                      ? 'success'
+                      : 'warning'
+                  "
+                  variant="tonal"
+                  class="mb-3"
+                  aria-live="polite"
+                >
+                  {{ orderSyncMessage }}
+                </VAlert>
+                <VBtn
+                  data-testid="shopify-orders-sync-now"
+                  color="primary"
+                  variant="tonal"
+                  :loading="syncingOrders"
+                  :disabled="syncingOrders"
+                  @click="syncOrdersNow"
+                >
+                  Sync orders now
                 </VBtn>
               </VCardText>
             </VCard>

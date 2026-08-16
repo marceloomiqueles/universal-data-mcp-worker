@@ -2,6 +2,7 @@ export const SHOPIFY_API_VERSION = '2026-07'
 export const SHOPIFY_REQUIRED_SCOPES = [
   'read_inventory',
   'read_locations',
+  'read_orders',
   'read_products',
 ] as const
 
@@ -133,7 +134,7 @@ export async function verifyShopifyConnection(
 export async function acquireShopifyAccessToken(
   credentials: ShopifyCredentials,
   fetcher: typeof fetch = fetch,
-): Promise<{ accessToken: string }> {
+): Promise<{ accessToken: string; grantedScopes: readonly string[] }> {
   const shopDomain = canonicalShopDomain(credentials.shopDomain)
   const tokenResponse = await shopifyProviderFetch(
     fetcher,
@@ -164,10 +165,7 @@ export async function acquireShopifyAccessToken(
       ? tokenBody.scope.split(/[ ,]+/u).filter(Boolean)
       : []
   if (!token) throw new ShopifyConnectionError('MALFORMED_RESPONSE')
-  if (
-    scopes.length !== SHOPIFY_REQUIRED_SCOPES.length ||
-    SHOPIFY_REQUIRED_SCOPES.some((scope) => !scopes.includes(scope))
-  )
+  if (SHOPIFY_REQUIRED_SCOPES.some((scope) => !scopes.includes(scope)))
     throw new ShopifyConnectionError('SCOPE_FAILED')
-  return { accessToken: token }
+  return { accessToken: token, grantedScopes: scopes }
 }

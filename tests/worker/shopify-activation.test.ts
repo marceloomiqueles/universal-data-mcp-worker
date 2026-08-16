@@ -71,7 +71,8 @@ function successfulShopifyFetch(): typeof fetch {
       return Response.json({
         access_token: 'transient-token',
         expires_in: 86399,
-        scope: 'read_products,read_inventory,read_locations',
+        scope:
+          'read_products,read_inventory,read_locations,read_orders,read_all_orders',
       })
     }
     return Response.json(
@@ -117,6 +118,24 @@ describe('Shopify verification transport', () => {
     clientSecret: 'secret',
   }
 
+  function fetchWithScopes(scopes: string): typeof fetch {
+    return vi.fn(async (input: RequestInfo | URL) =>
+      String(input).endsWith('/admin/oauth/access_token')
+        ? Response.json({ access_token: 'token', scope: scopes })
+        : Response.json(
+            {
+              data: {
+                shop: {
+                  id: 'gid://shopify/Shop/1',
+                  myshopifyDomain: 'example.myshopify.com',
+                },
+              },
+            },
+            { headers: { 'x-shopify-api-version': '2026-07' } },
+          ),
+    ) as typeof fetch
+  }
+
   it('uses client credentials and a minimal read-only versioned query', async () => {
     const fetcher = successfulShopifyFetch()
     await verifyShopifyConnection(credentials, fetcher)
@@ -148,22 +167,33 @@ describe('Shopify verification transport', () => {
     ).rejects.toMatchObject({ code } satisfies Partial<ShopifyConnectionError>)
   })
 
-  it('rejects missing exact scopes and malformed provider responses', async () => {
-    const missingScope = vi.fn(async () =>
-      Response.json({
-        access_token: 'token',
-        expires_in: 100,
-        scope: 'read_products,read_inventory',
-      }),
-    ) as typeof fetch
+  it.each([
+    ['read_products,read_inventory,read_locations,read_orders'],
+    ['read_products,read_inventory,read_locations,read_orders,read_all_orders'],
+    ['read_products,read_inventory,read_locations,read_orders,read_themes'],
+  ])('accepts a grant containing all required scopes: %s', async (scopes) => {
     await expect(
-      verifyShopifyConnection(credentials, missingScope),
+      verifyShopifyConnection(credentials, fetchWithScopes(scopes)),
+    ).resolves.toBeUndefined()
+  })
+
+  it.each([
+    ['read_products,read_inventory,read_locations'],
+    ['read_products,read_locations,read_orders'],
+    ['read_products,read_inventory,read_locations,read_all_orders'],
+  ])('rejects a grant missing a required scope: %s', async (scopes) => {
+    await expect(
+      verifyShopifyConnection(credentials, fetchWithScopes(scopes)),
     ).rejects.toMatchObject({ code: 'SCOPE_FAILED' })
+  })
+
+  it('rejects malformed provider responses', async () => {
     const malformed = vi.fn(async () =>
       Response.json({
         access_token: 'token',
         expires_in: 100,
-        scope: 'read_products,read_inventory,read_locations',
+        scope:
+          'read_products,read_inventory,read_locations,read_orders,read_all_orders',
       }),
     ) as typeof fetch
     vi.mocked(malformed)
@@ -171,7 +201,8 @@ describe('Shopify verification transport', () => {
         Response.json({
           access_token: 'token',
           expires_in: 100,
-          scope: 'read_products,read_inventory,read_locations',
+          scope:
+            'read_products,read_inventory,read_locations,read_orders,read_all_orders',
         }),
       )
       .mockResolvedValueOnce(
@@ -185,19 +216,6 @@ describe('Shopify verification transport', () => {
     ).rejects.toMatchObject({ code: 'MALFORMED_RESPONSE' })
   })
 
-  it('rejects additional granted scopes', async () => {
-    const fetcher = vi.fn(async () =>
-      Response.json({
-        access_token: 'token',
-        scope: 'read_products,read_inventory,read_locations,read_customers',
-      }),
-    ) as typeof fetch
-
-    await expect(
-      verifyShopifyConnection(credentials, fetcher),
-    ).rejects.toMatchObject({ code: 'SCOPE_FAILED' })
-  })
-
   it.each([
     ['THROTTLED', 'RATE_LIMITED'],
     ['ACCESS_DENIED', 'SCOPE_FAILED'],
@@ -208,7 +226,8 @@ describe('Shopify verification transport', () => {
       .mockResolvedValueOnce(
         Response.json({
           access_token: 'token',
-          scope: 'read_products,read_inventory,read_locations',
+          scope:
+            'read_products,read_inventory,read_locations,read_orders,read_all_orders',
         }),
       )
       .mockResolvedValueOnce(
@@ -228,7 +247,8 @@ describe('Shopify verification transport', () => {
     vi.mocked(wrongVersion).mockResolvedValueOnce(
       Response.json({
         access_token: 'token',
-        scope: 'read_products,read_inventory,read_locations',
+        scope:
+          'read_products,read_inventory,read_locations,read_orders,read_all_orders',
       }),
     )
     vi.mocked(wrongVersion).mockResolvedValueOnce(
@@ -252,7 +272,8 @@ describe('Shopify verification transport', () => {
     vi.mocked(wrongShop).mockResolvedValueOnce(
       Response.json({
         access_token: 'token',
-        scope: 'read_products,read_inventory,read_locations',
+        scope:
+          'read_products,read_inventory,read_locations,read_orders,read_all_orders',
       }),
     )
     vi.mocked(wrongShop).mockResolvedValueOnce(
@@ -534,7 +555,8 @@ describe('Shopify Admin API activation', () => {
         Response.json({
           access_token: 'transient',
           expires_in: 100,
-          scope: 'read_products,read_inventory,read_locations',
+          scope:
+            'read_products,read_inventory,read_locations,read_orders,read_all_orders',
         }),
       )
       .mockReturnValueOnce(graphql)
@@ -586,7 +608,8 @@ describe('Shopify Admin API activation', () => {
       .mockResolvedValueOnce(
         Response.json({
           access_token: 'transient',
-          scope: 'read_products,read_inventory,read_locations',
+          scope:
+            'read_products,read_inventory,read_locations,read_orders,read_all_orders',
         }),
       )
       .mockReturnValueOnce(graphql)

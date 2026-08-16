@@ -16,10 +16,10 @@ Terms used:
 |---|---|
 | Decided | One deployment; one pnpm root project; core vs. slices; compiled integrations; shared MCP plus specific surfaces; shared D1/migrations plus slice schemas; Vue 3/TypeScript/Vuetify/Vue Router SPA; one owner; retention before purge |
 | Provisional | Exact lifecycle names and the list of mechanisms that may belong in core |
-| Working assumptions | Garmin provides evidence for the first slice; D1 is used only where persistence is needed; standard MCP should be sufficient for ChatGPT until proven otherwise |
-| Gaps | Contracts, Garmin tools, sync/freshness/retention values, libraries, and real platform/provider behavior |
+| Working assumptions | Garmin remains the intended health-data vertical; Shopify provides the first validated persisted source and query paths; D1 is used only where persistence is needed; standard MCP remains sufficient for the validated ChatGPT client |
+| Gaps | Contracts, Garmin provider/tools, sync/freshness/retention values, and remaining platform/provider behavior |
 | Out of scope | Enterprise platform, universal model, dynamic plugins, additional AI clients, and speculative infrastructure |
-| To validate | Garmin data behavior, idempotency, Garmin/D1 limits, and operation by non-technical users |
+| To validate | Garmin data behavior and provider viability, Garmin/D1 limits, and broader operation by non-technical users |
 
 Assumptions are not architectural commitments. If evidence contradicts them, update the documentation and record the resulting decision.
 
@@ -54,7 +54,8 @@ Cloudflare Worker / deployment
 │   └── aggregates capabilities from active integrations
 ├── Shared core
 ├── Registered integrations
-│   └── Garmin (first real integration)
+│   ├── Garmin (registered, not configured)
+│   └── Shopify (Admin-managed, read-only data source)
 └── D1 where appropriate
 ```
 
@@ -70,11 +71,11 @@ Two rules govern separation:
 
 > **Reuse mechanisms, not models.**
 
-Core may contain only mechanisms that remain necessary if Garmin is replaced. Current candidates include MCP runtime, registry and lifecycle, technical D1/migrations, shared sync orchestration, configuration, Admin authentication/session, shared error classification, and diagnostics.
+Core may contain only mechanisms that remain necessary if one integration is replaced. Current candidates include MCP runtime, registry and lifecycle, technical D1/migrations, shared sync orchestration, configuration, Admin authentication/session, shared error classification, and diagnostics.
 
 This list does not require an abstraction for every mechanism. Final core granularity and the integration contract remain open until real code and reuse evidence exist.
 
-The Garmin slice owns anything that must understand its provider or domain: connection, source authentication, mappings, schema, queries, sync/freshness rules, diagnostics, and MCP capabilities.
+Each vertical slice owns anything that must understand its provider or domain. Garmin currently contributes only its compiled descriptor. Shopify owns its connection, source authentication, schemas, queries, bounded manual synchronization, diagnostics, and MCP capabilities.
 
 Do not design an enterprise framework, universal sports model, generic repository, or dynamic plugin system.
 
@@ -89,7 +90,7 @@ Where appropriate, an integration can:
 
 **Decided:** one deployment may contain N compiled integrations. If included in the deployment, an integration is registered. Registration does not mean connected or active.
 
-There is no dynamic discovery, remote code installation, or plugin marketplace. Garmin is enough to validate the first boundaries; other sources will not be implemented merely to demonstrate extensibility.
+There is no dynamic discovery, remote code installation, or plugin marketplace. Garmin and Shopify are explicitly registered by application composition; additional sources will not be implemented merely to demonstrate extensibility.
 
 ## MCP
 
@@ -98,9 +99,9 @@ The architecture separates:
 - **Shared mechanism:** standard MCP server/runtime, registration, aggregation, execution, technical plumbing, and common error handling.
 - **Slice surface:** tool/capability names, descriptions, schemas, operations, filters, limits, and pagination.
 
-The shared runtime does not know Garmin. Only active integrations expose capabilities. Tools minimize data and answer bounded queries rather than returning massive dumps.
+The shared runtime does not know Garmin or Shopify domain data. Only active integrations expose integration capabilities. Tools minimize data and answer bounded queries rather than returning massive dumps.
 
-The initial shared runtime uses stable MCP `2025-11-25` Streamable HTTP and exposes one bounded read-only registry tool. MCP clients authenticate separately from the Admin browser session through OAuth 2.1 authorization code with PKCE; the existing owner supplies identity and consent, while provider-managed OAuth state lives in KV. The remote MCP, OAuth flow, tool discovery, indirect natural-language selection, non-empty and empty results, owner revocation, and reauthorization have been validated with ChatGPT Work developer mode against real Cloudflare deployments. This evidence covers the current read-only tool and tested client mode only; it does not imply support for every ChatGPT plan, MCP client, write action, resource, or prompt. No client-specific adapter is needed while standard MCP remains sufficient.
+The shared runtime uses stable MCP `2025-11-25` Streamable HTTP. It exposes the common bounded `list_integrations` tool and composes Shopify's bounded D1-backed `get_inventory` and `get_sales` tools only while Shopify is connected. MCP clients authenticate separately from the Admin browser session through OAuth 2.1 authorization code with PKCE; the existing owner supplies identity and consent, while provider-managed OAuth state lives in KV. The remote MCP, OAuth flow, tool discovery, indirect natural-language selection, empty and non-empty results, owner revocation, and reauthorization have been validated with ChatGPT Work developer mode against real Cloudflare deployments. Real persisted Shopify inventory and sales conversations have also been validated. This evidence covers the three current read-only tools and tested client mode only; it does not imply support for every ChatGPT plan, MCP client, write action, resource, or prompt. No client-specific adapter is needed while standard MCP remains sufficient.
 
 ## Persistence
 
@@ -137,7 +138,7 @@ retry after failure = consistent state
 purge × N           = same final state
 ```
 
-Retries, checkpoints, concurrency, locking/coalescing, historical ranges, and concrete policies remain gaps until Garmin and Cloudflare are measured.
+Shopify now proves bounded checkpoints, deterministic upserts, partial-run reporting, a single-owner manual concurrency guard, and separate inventory/order coverage. Background scheduling, stale-running recovery, broader historical ranges, retention values, and Garmin-specific policies remain gaps requiring evidence.
 
 ## Admin
 

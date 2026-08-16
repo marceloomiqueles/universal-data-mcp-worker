@@ -222,6 +222,11 @@ function mcpRequest(
 
 beforeEach(async () => {
   await env.DB.batch([
+    env.DB.prepare('DELETE FROM shopify_order_sync_pending_line_items'),
+    env.DB.prepare('DELETE FROM shopify_order_sync_pending_orders'),
+    env.DB.prepare('DELETE FROM shopify_order_line_items'),
+    env.DB.prepare('DELETE FROM shopify_orders'),
+    env.DB.prepare('DELETE FROM shopify_order_sync_runs'),
     env.DB.prepare('DELETE FROM shopify_inventory_levels'),
     env.DB.prepare('DELETE FROM shopify_variants'),
     env.DB.prepare('DELETE FROM shopify_inventory_items'),
@@ -845,7 +850,7 @@ describe('MCP protocol and list_integrations tool', () => {
     })
   })
 
-  it('discovers and calls persisted Shopify inventory without provider access', async () => {
+  it('discovers and calls persisted Shopify inventory and sales without provider access', async () => {
     await env.DB.batch([
       env.DB.prepare(
         `INSERT INTO shopify_connection
@@ -887,6 +892,58 @@ describe('MCP protocol and list_integrations tool', () => {
          VALUES ('gid://shopify/InventoryLevel/1', 'gid://shopify/InventoryItem/1',
                  'gid://shopify/Location/1', 3, '2026-08-16T12:00:00Z', 'mcp-scan')`,
       ),
+      env.DB.prepare(
+        `INSERT INTO shopify_order_sync_runs
+         (id, status, started_at, completed_at, window_start, window_end,
+          shop_timezone, shop_currency, top_has_next, coverage_complete)
+         VALUES ('mcp-order-scan', 'complete', ?, ?, ?, ?, 'America/New_York',
+                 'USD', 0, 1)`,
+      ).bind(
+        Date.parse('2026-08-16T17:59:59Z'),
+        Date.parse('2026-08-16T18:00:00Z'),
+        Date.parse('2026-08-01T00:00:00Z'),
+        Date.parse('2026-08-17T00:00:00Z'),
+      ),
+      env.DB.prepare(
+        `INSERT INTO shopify_order_sync_runs
+         (id, status, started_at, completed_at, window_start, window_end,
+          top_has_next, coverage_complete, last_error_code)
+         VALUES ('mcp-order-failed', 'failed', ?, ?, ?, ?, 1, 0,
+                 'SOURCE_UNAVAILABLE')`,
+      ).bind(
+        Date.parse('2026-08-16T18:01:00Z'),
+        Date.parse('2026-08-16T18:01:01Z'),
+        Date.parse('2026-08-01T00:00:00Z'),
+        Date.parse('2026-08-17T00:00:00Z'),
+      ),
+      env.DB.prepare(
+        `INSERT INTO shopify_orders
+         (source_gid, name, created_at, updated_at, cancelled_at,
+          current_total_amount, currency_code, last_seen_order_scan_id)
+         VALUES ('gid://shopify/Order/1', '#1', ?, ?, NULL, '12.5', 'USD',
+                 'mcp-order-scan'),
+                ('gid://shopify/Order/2', '#2', ?, ?, NULL, '7.5', 'USD',
+                 'mcp-order-scan')`,
+      ).bind(
+        Date.parse('2026-08-16T12:00:00Z'),
+        Date.parse('2026-08-16T13:00:00Z'),
+        Date.parse('2026-08-16T14:00:00Z'),
+        Date.parse('2026-08-16T15:00:00Z'),
+      ),
+      env.DB.prepare(
+        `INSERT INTO shopify_order_line_items
+         (source_gid, order_gid, product_gid, variant_gid, title, variant_title,
+          sku, current_quantity, current_discounted_subtotal, currency_code,
+          last_seen_order_scan_id)
+         VALUES ('gid://shopify/LineItem/1', 'gid://shopify/Order/1',
+                 'gid://shopify/Product/1', 'gid://shopify/ProductVariant/1',
+                 'Trail Shoe', 'Blue', 'SKU-LOW', 2, '10', 'USD',
+                 'mcp-order-scan'),
+                ('gid://shopify/LineItem/2', 'gid://shopify/Order/2',
+                 'gid://shopify/Product/1', 'gid://shopify/ProductVariant/1',
+                 'Trail Shoe', 'Blue', 'SKU-LOW', 1, '6', 'USD',
+                 'mcp-order-scan')`,
+      ),
     ])
 
     const providerFetch = globalThis.fetch
@@ -911,6 +968,7 @@ describe('MCP protocol and list_integrations tool', () => {
       expect(toolsBody.result.tools.map(({ name }) => name)).toEqual([
         'list_integrations',
         'get_inventory',
+        'get_sales',
       ])
 
       const called = await handleRequest(
@@ -944,6 +1002,94 @@ describe('MCP protocol and list_integrations tool', () => {
             ],
             nextCursor: null,
             lastSuccessfulSyncAt: new Date(1723800000000).toISOString(),
+          },
+        },
+      })
+
+      const sales = await handleRequest(
+        mcpRequest(
+          {
+            jsonrpc: '2.0',
+            id: 22,
+            method: 'tools/call',
+            params: {
+              name: 'get_sales',
+              arguments: {
+                start: '2026-08-16T00:00:00.000Z',
+                end: '2026-08-17T00:00:00.000Z',
+                includeTopProducts: true,
+                topProductsLimit: 1,
+              },
+            },
+          },
+          accessToken,
+          { 'mcp-protocol-version': '2025-11-25' },
+        ),
+        workerEnv(),
+      )
+      expect(sales.status).toBe(200)
+      await expect(sales.json()).resolves.toMatchObject({
+        result: {
+          structuredContent: {
+            period: {
+              start: '2026-08-16T00:00:00.000Z',
+              end: '2026-08-17T00:00:00.000Z',
+            },
+            timezone: 'America/New_York',
+            orderCount: 2,
+            totalSales: '20',
+            averageOrderValue: '10',
+            currency: 'USD',
+            topProducts: [
+              {
+                product: 'Trail Shoe',
+                variant: 'Blue',
+                sku: 'SKU-LOW',
+                quantity: 3,
+                merchandiseSalesBeforeTax: '16',
+                currency: 'USD',
+              },
+            ],
+            lastSuccessfulOrderSync: '2026-08-16T18:00:00.000Z',
+            latestOrderSyncAttempt: {
+              status: 'failed',
+              completedAt: '2026-08-16T18:01:01.000Z',
+            },
+            coverage: {
+              limitation: 'recent_60_days_only',
+              complete: true,
+            },
+          },
+        },
+      })
+
+      const emptySales = await handleRequest(
+        mcpRequest(
+          {
+            jsonrpc: '2.0',
+            id: 23,
+            method: 'tools/call',
+            params: {
+              name: 'get_sales',
+              arguments: {
+                start: '2026-08-15T00:00:00.000Z',
+                end: '2026-08-16T00:00:00.000Z',
+              },
+            },
+          },
+          accessToken,
+          { 'mcp-protocol-version': '2025-11-25' },
+        ),
+        workerEnv(),
+      )
+      await expect(emptySales.json()).resolves.toMatchObject({
+        result: {
+          structuredContent: {
+            orderCount: 0,
+            totalSales: '0',
+            averageOrderValue: null,
+            currency: 'USD',
+            topProducts: [],
           },
         },
       })

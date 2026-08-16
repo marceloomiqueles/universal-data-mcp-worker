@@ -144,7 +144,8 @@ describe('Shopify Spike 0 configuration and authentication', () => {
     for (const response of [
       tokenResponse({ scope: 'read_products,read_inventory' }),
       tokenResponse({
-        scope: 'read_products,read_inventory,read_locations,read_orders',
+        scope:
+          'read_products,read_inventory,read_locations,read_orders,read_all_orders',
       }),
     ]) {
       await expect(

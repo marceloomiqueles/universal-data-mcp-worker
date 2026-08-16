@@ -2,6 +2,7 @@ import { env } from 'cloudflare:test'
 import { expect, it } from 'vitest'
 
 import {
+  acquireShopifyAccessToken,
   SHOPIFY_API_VERSION,
   SHOPIFY_REQUIRED_SCOPES,
 } from '../../src/integrations/shopify/provider'
@@ -9,6 +10,16 @@ import { handleRequest, type Env } from '../../src/worker/index'
 
 const origin = 'https://shopify-live-validation.example.test'
 const allow: RateLimit = { limit: async () => ({ success: true }) }
+
+interface LiveOrderSync {
+  status: 'complete' | 'partial' | 'failed'
+  coverageComplete: boolean
+  sourceCoverage: string
+  currency: string | null
+  shopTimezone: string | null
+  counts: { orders: number; lineItems: number }
+  lastErrorCode: string | null
+}
 
 function workerEnv(): Env {
   return {
@@ -40,6 +51,11 @@ function adminRequest(
 }
 
 it('validates the real Shopify development store through the production Admin backend', async () => {
+  const { grantedScopes } = await acquireShopifyAccessToken({
+    shopDomain: env.LIVE_SHOPIFY_SHOP_DOMAIN,
+    clientId: env.LIVE_SHOPIFY_CLIENT_ID,
+    clientSecret: env.LIVE_SHOPIFY_CLIENT_SECRET,
+  })
   const setup = await handleRequest(
     new Request(`${origin}/api/auth/setup`, {
       method: 'POST',
@@ -79,11 +95,24 @@ it('validates the real Shopify development store through the production Admin ba
     adminRequest('/api/integrations/shopify/verify', cookie, 'POST'),
     workerEnv(),
   )
-  expect(verified.status).toBe(200)
-  await expect(verified.json()).resolves.toMatchObject({
+  const verifiedBody = (await verified.json()) as {
+    status?: string
+    secretConfigured?: boolean
+    lastErrorCode?: string | null
+    error?: { code?: string }
+  }
+  expect({
+    httpStatus: verified.status,
+    status: verifiedBody.status,
+    secretConfigured: verifiedBody.secretConfigured,
+    lastErrorCode: verifiedBody.lastErrorCode,
+    errorCode: verifiedBody.error?.code,
+  }).toEqual({
+    httpStatus: 200,
     status: 'connected',
     secretConfigured: true,
     lastErrorCode: null,
+    errorCode: undefined,
   })
   expect(
     await env.DB.prepare(
@@ -139,15 +168,59 @@ it('validates the real Shopify development store through the production Admin ba
   )
   expect(repeatedCounts).toEqual(counts)
 
-  console.info('Sanitized Shopify product-path validation evidence:', {
-    apiVersion: SHOPIFY_API_VERSION,
-    scopes: [...SHOPIFY_REQUIRED_SCOPES],
-    store: 'maintainer-controlled development store',
-    encryptedAtRest: true,
-    tokenPersisted: false,
-    resultingState: 'connected',
-    syncStatus: 'complete',
-    counts,
-    repeatedSyncStable: true,
+  let orderSync: LiveOrderSync | null = null
+  for (let attempt = 0; attempt < 10; attempt += 1) {
+    const orders = await handleRequest(
+      adminRequest('/api/integrations/shopify/orders/sync', cookie, 'POST'),
+      workerEnv(),
+    )
+    expect(orders.status).toBe(200)
+    const result = (await orders.json()) as { sync: LiveOrderSync }
+    orderSync = result.sync
+    if (orderSync?.status !== 'partial') break
+  }
+  expect(orderSync).toMatchObject({
+    status: 'complete',
+    coverageComplete: true,
+    sourceCoverage: 'recent_60_days_only',
+    lastErrorCode: null,
   })
+  const orderCounts = {
+    orders: (await env.DB.prepare(
+      'SELECT COUNT(*) AS count FROM shopify_orders',
+    ).first<{ count: number }>())!.count,
+    lineItems: (await env.DB.prepare(
+      'SELECT COUNT(*) AS count FROM shopify_order_line_items',
+    ).first<{ count: number }>())!.count,
+  }
+  expect(orderSync?.counts).toMatchObject(orderCounts)
+  expect(
+    await env.DB.prepare(
+      "SELECT COUNT(*) AS count FROM sqlite_master WHERE sql LIKE '%customer%' OR sql LIKE '%email%' OR sql LIKE '%address%'",
+    ).first<{ count: number }>(),
+  ).toEqual({ count: 0 })
+
+  console.info(
+    'Sanitized Shopify product and order-path validation evidence:',
+    {
+      apiVersion: SHOPIFY_API_VERSION,
+      requiredProductScopes: [...SHOPIFY_REQUIRED_SCOPES],
+      providerReportedGrantedScopes: [...grantedScopes].sort(),
+      store: 'maintainer-controlled development store',
+      encryptedAtRest: true,
+      tokenPersisted: false,
+      resultingState: 'connected',
+      syncStatus: 'complete',
+      counts,
+      repeatedSyncStable: true,
+      orderSync: {
+        status: orderSync?.status,
+        sourceCoverage: orderSync?.sourceCoverage,
+        currency: orderSync?.currency,
+        shopTimezoneConfigured: Boolean(orderSync?.shopTimezone),
+        counts: orderCounts,
+        customerIdentityPersisted: false,
+      },
+    },
+  )
 })

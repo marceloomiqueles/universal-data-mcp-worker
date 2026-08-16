@@ -11,6 +11,12 @@ import {
   ShopifySyncConflictError,
   syncShopifyInventory,
 } from '../../integrations/shopify/ingestion'
+import {
+  getLastSuccessfulShopifyOrderSyncAt,
+  getShopifyOrderSyncStatus,
+  ShopifyOrderSyncConflictError,
+  syncShopifyOrders,
+} from '../../integrations/shopify/orders-ingestion'
 
 export interface ShopifyEnv {
   DB: D1Database
@@ -51,6 +57,10 @@ export async function getShopify(
     }),
     sync: await getShopifySyncStatus(env.DB),
     lastSuccessfulSyncAt: await getLastSuccessfulShopifySyncAt(env.DB),
+    orderSync: await getShopifyOrderSyncStatus(env.DB),
+    lastSuccessfulOrderSyncAt: await getLastSuccessfulShopifyOrderSyncAt(
+      env.DB,
+    ),
   })
 }
 
@@ -172,6 +182,39 @@ export async function syncShopify(env: ShopifyEnv): Promise<Response> {
         cause.code === 'NOT_CONNECTED'
           ? 'Shopify must be connected before inventory can be synchronized.'
           : 'A Shopify inventory synchronization is already running.',
+        409,
+      )
+    }
+    throw cause
+  }
+}
+
+export async function syncShopifyOrderSales(
+  env: ShopifyEnv,
+): Promise<Response> {
+  const encryptionKey = key(env)
+  if (!encryptionKey)
+    return failure(
+      'CONFIGURATION_UNAVAILABLE',
+      'Integration secret encryption is not configured.',
+      503,
+    )
+  try {
+    const sync = await syncShopifyOrders(env.DB, encryptionKey)
+    const status =
+      sync.lastErrorCode === 'RATE_LIMITED'
+        ? 429
+        : sync.lastErrorCode
+          ? 502
+          : 200
+    return response({ sync }, status)
+  } catch (cause) {
+    if (cause instanceof ShopifyOrderSyncConflictError) {
+      return failure(
+        cause.code,
+        cause.code === 'NOT_CONNECTED'
+          ? 'Shopify must be connected before orders can be synchronized.'
+          : 'A Shopify order synchronization is already running.',
         409,
       )
     }

@@ -469,7 +469,8 @@ describe('authorization and routing boundaries', () => {
         {
           id: 'shopify',
           name: 'Shopify',
-          description: 'Shopify integration for product and inventory data.',
+          description:
+            'Shopify integration for product, inventory, and recent order sales data.',
           status: 'not_configured',
         },
       ],
@@ -559,6 +560,6 @@ describe('D1 migration', () => {
     const migrationCount = await env.DB.prepare(
       'SELECT COUNT(*) AS count FROM d1_migrations',
     ).first<number>('count')
-    expect(migrationCount).toBe(3)
+    expect(migrationCount).toBe(4)
   })
 })

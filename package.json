@@ -29,7 +29,7 @@
   "cloudflare": {
     "bindings": {
       "DB": {
-        "description": "Stores owner/session records and encrypted integration connection state. Cloudflare provisions this D1 database automatically."
+        "description": "Stores owner/session state and Shopify encrypted configuration, synchronized data, and operational metadata. Cloudflare provisions this D1 database automatically."
       },
       "LOGIN_RATE_LIMITER": {
         "description": "Limits repeated login attempts before password verification."
