@@ -18,6 +18,8 @@ export default defineConfig(async () => {
         miniflare: {
           bindings: {
             OWNER_SETUP_TOKEN: 'test-only-owner-setup-token-with-high-entropy',
+            INTEGRATION_SECRETS_KEY:
+              'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
             TEST_MIGRATIONS: migrations,
           },
         },

@@ -3,6 +3,10 @@
 # Cloudflare's Deploy flow requests the production value in its protected secret form.
 OWNER_SETUP_TOKEN=""
 
+# 32-byte Base64URL key for encrypting persisted integration secrets.
+# Run `pnpm setup:local`; never generate or rotate this value casually.
+INTEGRATION_SECRETS_KEY=""
+
 # Shopify Spike 0 only. These values must belong to a maintainer-controlled
 # development store and Dev Dashboard app in the same Shopify organization.
 SHOPIFY_SHOP_DOMAIN=""

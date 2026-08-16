@@ -15,7 +15,7 @@ The installing owner must still complete account creation in their browser; the 
 
 Provision one self-hosted installation without manually editing D1 IDs, running SQL, generating a bootstrap proof, or constructing its setup URL.
 
-Provisioning owns Cloudflare management operations. The deployed Worker consumes logical `DB`, `OAUTH_KV`, `LOGIN_RATE_LIMITER`, `MCP_OAUTH_RATE_LIMITER`, and `OWNER_SETUP_TOKEN` bindings.
+Provisioning owns Cloudflare management operations. The deployed Worker consumes logical `DB`, `OAUTH_KV`, `LOGIN_RATE_LIMITER`, `MCP_OAUTH_RATE_LIMITER`, `OWNER_SETUP_TOKEN`, and `INTEGRATION_SECRETS_KEY` bindings.
 
 ## Normal path
 
@@ -142,8 +142,9 @@ Cloudflare's Vite plugin intentionally places the local `.dev.vars` file in igno
 | Name | Source | Lifetime | Storage |
 |---|---|---|---|
 | `OWNER_SETUP_TOKEN` | Generated with Node cryptographic randomness | Required only until the singleton owner exists | Cloudflare Worker secret; temporary upload file is deleted |
+| `INTEGRATION_SECRETS_KEY` | Generated as 32 random bytes encoded with unpadded Base64URL | Required while encrypted integration configuration exists | Cloudflare Worker secret; provisioned only when absent and never silently rotated |
 
-No user-supplied runtime secret currently exists. Cloudflare authentication remains in Wrangler's standard credential storage and is never passed to the Worker.
+Shopify client credentials are supplied later through the authenticated Admin API, not through provisioning. The client secret is encrypted before D1 persistence using `INTEGRATION_SECRETS_KEY`; losing that key requires disconnecting and configuring affected integrations again. Cloudflare authentication remains in Wrangler's standard credential storage and is never passed to the Worker.
 
 After owner creation, the backend permanently refuses replacement even if the proof remains configured. Removing the now-unused secret with Wrangler may be added to a validated operational flow later; it is not automated before real deployment behavior is observed.
 

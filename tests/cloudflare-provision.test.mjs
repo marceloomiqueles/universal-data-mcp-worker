@@ -49,6 +49,10 @@ describe('Cloudflare provisioning configuration', () => {
       packageJson.cloudflare.bindings.OWNER_SETUP_TOKEN.description,
       /Temporary high-entropy proof/u,
     )
+    assert.match(
+      packageJson.cloudflare.bindings.INTEGRATION_SECRETS_KEY.description,
+      /32-byte Base64URL secret/u,
+    )
   })
 
   it('updates D1 and rate-limit bindings without changing their logical names', () => {

@@ -24,6 +24,7 @@ function workerEnv(overrides: Partial<Env> = {}): Env {
     MCP_OAUTH_RATE_LIMITER: allowAll,
     OAUTH_KV: env.OAUTH_KV,
     OWNER_SETUP_TOKEN: env.OWNER_SETUP_TOKEN,
+    INTEGRATION_SECRETS_KEY: env.INTEGRATION_SECRETS_KEY,
     ...overrides,
   }
 }
@@ -771,6 +772,7 @@ describe('MCP protocol and list_integrations tool', () => {
       }),
       createIntegrationRegistry([]),
       { userId: 'owner-1', scopes: [] },
+      env.DB,
     )
     expect(response.status).toBe(403)
     await expect(response.json()).resolves.toMatchObject({
@@ -823,6 +825,11 @@ describe('MCP protocol and list_integrations tool', () => {
             {
               id: 'garmin',
               name: 'Garmin',
+              status: 'not_configured',
+            },
+            {
+              id: 'shopify',
+              name: 'Shopify',
               status: 'not_configured',
             },
           ],
@@ -882,6 +889,7 @@ describe('MCP protocol and list_integrations tool', () => {
       }),
       createIntegrationRegistry([]),
       { userId: 'owner-1', scopes: ['integrations:read'] },
+      env.DB,
     )
     expect(response.status).toBe(200)
     await expect(response.json()).resolves.toMatchObject({

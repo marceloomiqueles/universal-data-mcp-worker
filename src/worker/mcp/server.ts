@@ -75,7 +75,10 @@ async function boundedRequest(request: Request): Promise<Request | Response> {
   return new Request(request, { body })
 }
 
-export function createMcpServer(registry: IntegrationRegistry): McpServer {
+export function createMcpServer(
+  registry: IntegrationRegistry,
+  db: D1Database,
+): McpServer {
   const server = new McpServer(
     { name: 'universal-data-mcp-worker', version: '0.1.0' },
     { capabilities: { tools: {} } },
@@ -85,7 +88,12 @@ export function createMcpServer(registry: IntegrationRegistry): McpServer {
     id: z.string(),
     name: z.string(),
     description: z.string(),
-    status: z.literal('not_configured'),
+    status: z.enum([
+      'not_configured',
+      'configured',
+      'connected',
+      'connection_error',
+    ]),
   })
   const outputSchema = z.object({
     integrations: z.array(integrationSchema),
@@ -105,16 +113,16 @@ export function createMcpServer(registry: IntegrationRegistry): McpServer {
         openWorldHint: false,
       },
     },
-    () => {
+    async () => {
       const result = {
-        integrations: registry
-          .list()
-          .map(({ id, name, description, status }) => ({
+        integrations: (await registry.list(db)).map(
+          ({ id, name, description, status }) => ({
             id,
             name,
             description,
             status,
-          })),
+          }),
+        ),
       }
 
       return {
@@ -139,6 +147,7 @@ export async function handleMcpRequest(
   request: Request,
   registry: IntegrationRegistry,
   authorization: McpAuthorization,
+  db: D1Database,
 ): Promise<Response> {
   const validationError = validateRequest(request)
   if (validationError) return validationError
@@ -149,7 +158,7 @@ export async function handleMcpRequest(
   const bounded = await boundedRequest(request)
   if (bounded instanceof Response) return bounded
 
-  const server = createMcpServer(registry)
+  const server = createMcpServer(registry, db)
   const transport = new WebStandardStreamableHTTPServerTransport({
     sessionIdGenerator: undefined,
     enableJsonResponse: true,

@@ -47,7 +47,7 @@ pnpm setup:local
 pnpm dev
 ```
 
-The script prints the authorized URL only after migrations succeed. It is safe to rerun: existing valid configuration and owner/session data remain unchanged, while Wrangler applies only pending migrations. Use `pnpm setup:url` to print the URL again from an existing `.dev.vars`. Vite uses fixed local port `5173` and fails rather than silently changing the setup URL when that port is occupied.
+The script prints the authorized URL only after migrations succeed. It is safe to rerun: existing valid owner-bootstrap and integration-encryption secrets plus owner/session data remain unchanged, while Wrangler applies only pending migrations. Use `pnpm setup:url` to print the URL again from an existing `.dev.vars`. Vite uses fixed local port `5173` and fails rather than silently changing the setup URL when that port is occupied.
 
 The Node setup-tool tests verify 256-bit Base64URL generation, private file permissions, repeat preservation, refusal to overwrite invalid configuration, the exact bootstrap-fragment contract, migration-before-URL ordering, and the deliberately unusable committed example. Provisioning-tool tests verify D1 reuse/fail-closed selection, regeneration from the committed template, defensive Wrangler `--strict`/`--keep-vars` deployment, stable per-installation rate-limit namespaces, and workers.dev URL extraction without contacting Cloudflare. Browser-build inspection fails when any non-empty local `.dev.vars` value appears under `dist/client`.
 
@@ -104,3 +104,9 @@ curl --silent --show-error http://127.0.0.1:8788/
 The Worker refuses non-loopback hosts. It obtains a short-lived access token through Shopify's client credentials grant, keeps the token in memory, queries Admin GraphQL API version `2026-07`, reads at most two products per page and three pages, and prints only bounded development-store product, variant, inventory, location, and query-cost diagnostics. It never prints credentials or authorization headers. The fixed operation is statically checked as a query and contains no mutation.
 
 Automated tests mock network access and cover request construction, exact scopes, domain validation, pagination bounds, response parsing, provider errors, secret-safe failures, and the query-only guard. Real-store evidence is recorded separately in the Shopify Spike 0 validation audit.
+
+## Shopify activation backend
+
+Worker tests apply migration `0002_shopify_connection.sql` and exercise the authenticated Shopify configuration, verification, revalidation, and disconnect paths. They verify AES-256-GCM roundtrip/authentication failure, absence of plaintext credentials and access-token storage, exact Origin enforcement, safe response DTOs, exact Shopify scopes and API version, sanitized provider failures, secret retention/replacement, and registry status derived from D1. Shopify network behavior is replaced only at the narrow `fetch` transport boundary.
+
+On 2026-08-16, after all automated checks passed, a temporary workerd test used the actual production Admin API handlers with an ephemeral migrated D1 database and the ignored maintainer development-store credentials. Saving encrypted configuration and the bounded real Shopify verification both returned success and no access-token storage existed. The temporary live test was removed afterward; normal automated tests never contact Shopify.

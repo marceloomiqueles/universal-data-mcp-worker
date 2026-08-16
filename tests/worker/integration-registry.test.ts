@@ -1,3 +1,4 @@
+import { env } from 'cloudflare:test'
 import { describe, expect, it } from 'vitest'
 
 import { createIntegrationRegistry } from '../../src/core/integrations/registry'
@@ -5,9 +6,10 @@ import { garminIntegrationDescriptor } from '../../src/integrations/garmin/descr
 import { integrationRegistry } from '../../src/worker/integrations'
 
 describe('integration registry', () => {
-  it('lists the explicitly registered Garmin descriptor', () => {
-    expect(integrationRegistry.list()).toEqual([garminIntegrationDescriptor])
-    expect(Object.keys(integrationRegistry.list()[0]!).sort()).toEqual([
+  it('lists the explicitly registered integration descriptors', async () => {
+    const listed = await integrationRegistry.list(env.DB)
+    expect(listed[0]).toMatchObject({ id: 'garmin', status: 'not_configured' })
+    expect(Object.keys(listed[0]!).sort()).toEqual([
       'description',
       'id',
       'name',

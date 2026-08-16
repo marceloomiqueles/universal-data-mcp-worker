@@ -28,7 +28,7 @@
   "cloudflare": {
     "bindings": {
       "DB": {
-        "description": "Stores the single owner credential verifier and revocable Admin sessions. Cloudflare provisions this D1 database automatically."
+        "description": "Stores owner/session records and encrypted integration connection state. Cloudflare provisions this D1 database automatically."
       },
       "LOGIN_RATE_LIMITER": {
         "description": "Limits repeated login attempts before password verification."
@@ -41,6 +41,9 @@
       },
       "OWNER_SETUP_TOKEN": {
         "description": "Temporary high-entropy proof for first-owner setup. Generate at least 32 random bytes encoded as Base64URL, retain it until setup succeeds, and never commit it."
+      },
+      "INTEGRATION_SECRETS_KEY": {
+        "description": "A 32-byte Base64URL secret used for AES-256-GCM encryption of persisted integration credentials. Losing it makes encrypted integration configuration unrecoverable."
       }
     }
   },

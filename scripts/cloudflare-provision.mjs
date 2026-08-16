@@ -8,6 +8,7 @@ import { promisify } from 'node:util'
 
 import {
   generateBootstrapProof,
+  generateIntegrationSecretsKey,
   setupUrl as localSetupUrl,
 } from './local-bootstrap.mjs'
 
@@ -294,15 +295,19 @@ async function workerExists() {
   )
 }
 
-async function deploy(secret) {
+async function deploy(secrets = {}) {
   let secretDirectory
   const args = deploymentArguments()
 
   try {
-    if (secret) {
+    if (Object.keys(secrets).length > 0) {
       secretDirectory = await mkdtemp(join(tmpdir(), 'universal-provision-'))
       const secretPath = join(secretDirectory, 'secrets.env')
-      await writeFile(secretPath, `OWNER_SETUP_TOKEN="${secret}"\n`, {
+      const source =
+        Object.entries(secrets)
+          .map(([name, value]) => `${name}=${JSON.stringify(value)}`)
+          .join('\n') + '\n'
+      await writeFile(secretPath, source, {
         encoding: 'utf8',
         mode: 0o600,
       })
@@ -316,6 +321,24 @@ async function deploy(secret) {
   } finally {
     if (secretDirectory) await rm(secretDirectory, { recursive: true })
   }
+}
+
+async function secretNames() {
+  const result = await captureWrangler([
+    'secret',
+    'list',
+    '--json',
+    '--config',
+    deploymentConfigPath,
+  ])
+  const values = JSON.parse(result.stdout)
+  return new Set(
+    Array.isArray(values)
+      ? values
+          .map((value) => value.name)
+          .filter((name) => typeof name === 'string')
+      : [],
+  )
 }
 
 export function deploymentArguments(secretPath) {
@@ -412,18 +435,33 @@ export async function provisionCloudflare(argv = process.argv.slice(2)) {
   let proof
   let origin
   if (existingWorker) {
-    origin = await deploy()
+    const existingSecrets = await secretNames()
+    const missingIntegrationKey = !existingSecrets.has(
+      'INTEGRATION_SECRETS_KEY',
+    )
+      ? generateIntegrationSecretsKey()
+      : undefined
+    if (missingIntegrationKey)
+      console.log('Configuring integration secret encryption.')
+    origin = await deploy(
+      missingIntegrationKey
+        ? { INTEGRATION_SECRETS_KEY: missingIntegrationKey }
+        : {},
+    )
     const status = await setupStatus(origin)
     if (status.setupRequired) {
       proof = generateBootstrapProof()
       console.log(
         'Owner setup is incomplete; rotating its temporary authorization.',
       )
-      origin = await deploy(proof)
+      origin = await deploy({ OWNER_SETUP_TOKEN: proof })
     }
   } else {
     proof = generateBootstrapProof()
-    origin = await deploy(proof)
+    origin = await deploy({
+      OWNER_SETUP_TOKEN: proof,
+      INTEGRATION_SECRETS_KEY: generateIntegrationSecretsKey(),
+    })
   }
 
   const status = await setupStatus(origin)

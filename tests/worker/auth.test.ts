@@ -25,6 +25,7 @@ function workerEnv(overrides: Partial<Env> = {}): Env {
     MCP_OAUTH_RATE_LIMITER: allowAllOAuth,
     OAUTH_KV: env.OAUTH_KV,
     OWNER_SETUP_TOKEN: env.OWNER_SETUP_TOKEN,
+    INTEGRATION_SECRETS_KEY: env.INTEGRATION_SECRETS_KEY,
     ...overrides,
   }
 }
@@ -465,6 +466,12 @@ describe('authorization and routing boundaries', () => {
           description: 'Garmin integration for health and activity data.',
           status: 'not_configured',
         },
+        {
+          id: 'shopify',
+          name: 'Shopify',
+          description: 'Shopify integration for product and inventory data.',
+          status: 'not_configured',
+        },
       ],
     })
     expect(JSON.stringify(body)).not.toMatch(
@@ -552,6 +559,6 @@ describe('D1 migration', () => {
     const migrationCount = await env.DB.prepare(
       'SELECT COUNT(*) AS count FROM d1_migrations',
     ).first<number>('count')
-    expect(migrationCount).toBe(1)
+    expect(migrationCount).toBe(2)
   })
 })

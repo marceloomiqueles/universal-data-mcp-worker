@@ -9,6 +9,7 @@ import { parseEnv } from 'node:util'
 import {
   ensureLocalConfiguration,
   generateBootstrapProof,
+  generateIntegrationSecretsKey,
   runLocalSetup,
   setupUrl,
 } from '../scripts/local-bootstrap.mjs'
@@ -37,6 +38,10 @@ describe('local installation bootstrap', () => {
     assert.notEqual(first, second)
   })
 
+  it('generates a 256-bit Base64URL integration encryption key', () => {
+    assert.match(generateIntegrationSecretsKey(), /^[A-Za-z0-9_-]{43}$/u)
+  })
+
   it('creates a private local secret and preserves it on repeated setup', async () => {
     const path = await temporarySecretPath()
     const first = await ensureLocalConfiguration(path)
@@ -46,6 +51,7 @@ describe('local installation bootstrap', () => {
     assert.equal(first.created, true)
     assert.equal(second.created, false)
     assert.equal(second.proof, first.proof)
+    assert.equal(second.integrationKey, first.integrationKey)
     assert.equal(await readFile(path, 'utf8'), before)
     assert.equal((await stat(path)).mode & 0o777, 0o600)
   })
@@ -88,5 +94,6 @@ describe('local installation bootstrap', () => {
   it('keeps the committed example deliberately unusable', async () => {
     const example = parseEnv(await readFile('.dev.vars.example', 'utf8'))
     assert.equal(example.OWNER_SETUP_TOKEN, '')
+    assert.equal(example.INTEGRATION_SECRETS_KEY, '')
   })
 })

@@ -224,7 +224,7 @@ export function createOAuthProvider(
       const authorization = (context as ExecutionContext<McpAuthorization>)
         .props
       if (!authorization) return new Response('Unauthorized', { status: 401 })
-      return handleMcpRequest(mcpRequest, registry, authorization)
+      return handleMcpRequest(mcpRequest, registry, authorization, _env.DB)
     },
   } satisfies Pick<Required<ExportedHandler<McpOAuthEnv>>, 'fetch'>
 

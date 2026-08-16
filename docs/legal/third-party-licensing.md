@@ -40,7 +40,7 @@ The unofficial provider must remain architecturally replaceable. Official Garmin
 
 Shopify is a third-party trademark and service. Shopify Spike 0 uses Shopify's official Dev Dashboard, client credentials grant, and Admin GraphQL API directly against a development store controlled by the Project Owner. No Shopify SDK or third-party Shopify source code is incorporated.
 
-The experiment is read-only and non-production. API access, scopes, test-store data, version support, throttling, and permitted use remain governed by Shopify's applicable developer, API, and service terms independently of the Project license. The experiment does not imply Shopify endorsement, partnership, or production-integration readiness.
+The viability experiment is read-only and non-production. The product backend now uses the same official client-credentials and Admin GraphQL surfaces to configure and verify a maintainer-owned Shopify connection, without incorporating a Shopify SDK. It stores no Shopify access token and performs only a minimal read-only verification query; catalog ingestion remains absent. API access, scopes, version support, throttling, and permitted use remain governed by Shopify's applicable developer, API, and service terms independently of the Project license. This does not imply Shopify endorsement or partnership, and support for external merchant stores remains out of scope.
 
 ## Future Integrations
 

@@ -1,4 +1,5 @@
-export type IntegrationStatus = 'not_configured'
+export type IntegrationStatus =
+  'not_configured' | 'configured' | 'connected' | 'connection_error'
 
 export interface IntegrationDescriptor {
   readonly id: string
@@ -8,11 +9,18 @@ export interface IntegrationDescriptor {
 }
 
 export interface IntegrationRegistry {
-  list(): readonly IntegrationDescriptor[]
+  list(db: D1Database): Promise<readonly IntegrationDescriptor[]>
+}
+
+export interface IntegrationRegistration {
+  readonly id: string
+  readonly name: string
+  readonly description: string
+  readStatus(db: D1Database): Promise<IntegrationStatus>
 }
 
 export function createIntegrationRegistry(
-  descriptors: readonly IntegrationDescriptor[],
+  descriptors: readonly IntegrationRegistration[],
 ): IntegrationRegistry {
   const ids = new Set<string>()
 
@@ -23,9 +31,17 @@ export function createIntegrationRegistry(
     ids.add(descriptor.id)
   }
 
-  const registered = descriptors.map((descriptor) => ({ ...descriptor }))
+  const registered = [...descriptors]
 
   return {
-    list: () => registered.map((descriptor) => ({ ...descriptor })),
+    list: async (db) =>
+      Promise.all(
+        registered.map(async ({ id, name, description, readStatus }) => ({
+          id,
+          name,
+          description,
+          status: await readStatus(db),
+        })),
+      ),
   }
 }
