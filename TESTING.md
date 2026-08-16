@@ -79,3 +79,28 @@ Local preview validation has confirmed setup status, first setup, current sessio
 `pnpm provision:cloudflare` fails before changing resources when Wrangler is unauthenticated. Authenticated validation created and then reused D1, applied the owner-auth migration, confirmed a repeat run had no pending migrations, deployed the Worker and its rate-limit binding, verified HTTPS setup status and HTTP rejection, and generated an authorized setup link. A subsequent audit found that a stale ignored deployment snapshot had removed an existing custom domain before it was manually restored. The provisioner now regenerates that snapshot from committed configuration on every run and uses Wrangler `--strict` to reject conflicting remote settings plus `--keep-vars` to preserve dashboard-managed variables. Regression tests cover the defensive command and stale-snapshot behavior; a deliberate remote conflict test remains unperformed because no disposable routed installation was authorized. The provisioner stores account-specific D1 identity only in ignored `.wrangler.production.jsonc`; upstream `wrangler.jsonc` omits `database_id` so Cloudflare can automatically provision the resource. Tests reject the former zero-UUID placeholder as invalid. The installing owner, not automated validation, chooses the real username and password.
 
 Cloudflare's Vite plugin intentionally copies the active `.dev.vars` into the ignored Worker output for `vite preview`; that file is not deployed. Do not archive or share the complete `dist/` directory. `pnpm build` now checks that no local secret value entered `dist/client`, which is the browser-visible artifact.
+
+## Shopify Spike 0
+
+The isolated Shopify viability spike is not a registered product integration and is not exposed through the Admin Web or MCP. It uses a maintainer-controlled Shopify development store only and performs bounded GraphQL queries without mutations.
+
+Configure these ignored `.dev.vars` entries for a Dev Dashboard app installed on a development store in the same Shopify organization:
+
+```text
+SHOPIFY_SHOP_DOMAIN="example.myshopify.com"
+SHOPIFY_CLIENT_ID="..."
+SHOPIFY_CLIENT_SECRET="..."
+```
+
+The app must grant exactly `read_products`, `read_inventory`, and `read_locations`. The real API rejected the inventory-level location name without `read_locations`, so the spike keeps that scope to identify inventory locations in its diagnostic output.
+
+Start the local-only spike Worker, then invoke its bounded run once:
+
+```sh
+pnpm spike:shopify
+curl --silent --show-error http://127.0.0.1:8788/
+```
+
+The Worker refuses non-loopback hosts. It obtains a short-lived access token through Shopify's client credentials grant, keeps the token in memory, queries Admin GraphQL API version `2026-07`, reads at most two products per page and three pages, and prints only bounded development-store product, variant, inventory, location, and query-cost diagnostics. It never prints credentials or authorization headers. The fixed operation is statically checked as a query and contains no mutation.
+
+Automated tests mock network access and cover request construction, exact scopes, domain validation, pagination bounds, response parsing, provider errors, secret-safe failures, and the query-only guard. Real-store evidence is recorded separately in the Shopify Spike 0 validation audit.

@@ -2,3 +2,9 @@
 # Do not fill this example manually. Run `pnpm setup:local` to generate `.dev.vars` safely.
 # Cloudflare's Deploy flow requests the production value in its protected secret form.
 OWNER_SETUP_TOKEN=""
+
+# Shopify Spike 0 only. These values must belong to a maintainer-controlled
+# development store and Dev Dashboard app in the same Shopify organization.
+SHOPIFY_SHOP_DOMAIN=""
+SHOPIFY_CLIENT_ID=""
+SHOPIFY_CLIENT_SECRET=""
