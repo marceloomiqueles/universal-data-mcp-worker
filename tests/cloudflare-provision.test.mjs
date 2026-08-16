@@ -4,8 +4,11 @@ import { describe, it } from 'node:test'
 
 import {
   configuredDatabaseId,
+  configuredDatabaseName,
+  deploymentArguments,
   deploymentUrl,
   rateLimitNamespace,
+  regenerateProvisioningConfig,
   selectDatabase,
   updateProvisioningConfig,
 } from '../scripts/cloudflare-provision.mjs'
@@ -52,12 +55,47 @@ describe('Cloudflare provisioning configuration', () => {
     const updated = updateProvisioningConfig(draftConfig, database)
 
     assert.equal(configuredDatabaseId(updated), database.uuid)
+    assert.equal(configuredDatabaseName(updated), database.name)
     assert.match(updated, /"binding": "DB"/u)
     assert.match(updated, /"name": "LOGIN_RATE_LIMITER"/u)
     assert.match(
       updated,
       new RegExp(`"namespace_id": "${rateLimitNamespace(database.uuid)}"`, 'u'),
     )
+  })
+
+  it('deploys defensively without treating a stale generated snapshot as authority', () => {
+    assert.deepEqual(deploymentArguments(), [
+      'deploy',
+      '--strict',
+      '--keep-vars',
+      '--config',
+      '.wrangler.production.jsonc',
+    ])
+    assert.deepEqual(deploymentArguments('/private/secrets.env'), [
+      'deploy',
+      '--strict',
+      '--keep-vars',
+      '--config',
+      '.wrangler.production.jsonc',
+      '--secrets-file',
+      '/private/secrets.env',
+    ])
+  })
+
+  it('regenerates owned bindings from the committed template, not stale routes', () => {
+    const staleSnapshot = `${draftConfig.slice(0, -2)},
+  "routes": [{ "pattern": "admin.example.com", "custom_domain": true }]
+}`
+    const database = {
+      name: 'universal-data-mcp-worker',
+      uuid: '12345678-1234-1234-1234-123456789abc',
+    }
+    const regenerated = regenerateProvisioningConfig(draftConfig, database)
+
+    assert.match(staleSnapshot, /admin\.example\.com/u)
+    assert.doesNotMatch(regenerated, /admin\.example\.com/u)
+    assert.equal(configuredDatabaseId(regenerated), database.uuid)
   })
 
   it('derives a stable positive integer namespace per D1 installation', () => {

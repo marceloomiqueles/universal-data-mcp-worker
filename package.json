@@ -20,8 +20,8 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "test": "node --test tests/local-bootstrap.test.mjs tests/cloudflare-provision.test.mjs && vitest run && vitest run --config vitest.worker.config.ts",
-    "build": "vite build",
+    "test": "node --test tests/local-bootstrap.test.mjs tests/cloudflare-provision.test.mjs tests/client-secret-check.test.mjs && vitest run && vitest run --config vitest.worker.config.ts",
+    "build": "vite build && node scripts/check-client-secrets.mjs",
     "preview": "pnpm build && vite preview"
   },
   "cloudflare": {

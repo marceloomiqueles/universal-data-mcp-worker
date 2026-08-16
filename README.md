@@ -95,17 +95,9 @@ After setup, open the Admin Web normally and sign in with the owner username and
 
 The repository includes a Wrangler-based provisioning command validated against a real Cloudflare Workers and D1 installation. Creating the first owner remains an explicit browser action by the installing owner.
 
-[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/marceloomiqueles/universal-data-mcp-worker)
+The public README does not advertise a **Deploy to Cloudflare** button yet. That entry point is blocked until the complete installation implementation is merged into the public default branch and the button is validated from that branch in a clean Cloudflare installation. A redirect to Cloudflare's dashboard alone is not validation.
 
-Cloudflare's native deployment flow forks the public repository, provisions and binds D1, runs the repository's remote migrations, configures Workers Builds, and deploys the Worker. During configuration, Cloudflare asks for `OWNER_SETUP_TOKEN`. This is the one unavoidable manual security step: use a password manager to generate and retain a URL-safe random value of at least 43 characters. Do not reuse an account password.
-
-After deployment, Cloudflare shows the Worker URL. Open:
-
-```text
-https://<worker-host>/login#bootstrap=<OWNER_SETUP_TOKEN>
-```
-
-Create the owner account, then discard the copied bootstrap value. Cloudflare currently cannot generate a secret and securely return it as a post-deploy URL fragment, so the button flow is not yet one-click. The [deployment runbook](docs/runbooks/cloudflare-self-hosted-installation.md) describes both this browser flow and the fully automated Wrangler alternative.
+Cloudflare's native button can provision D1 and request a Worker secret, but it cannot generate the bootstrap proof and securely return the matching first-owner URL. When the button is enabled, the remaining owner interaction will be documented as a copy/paste flow rather than called one-click: generate one 43-character URL-safe value with a password manager, paste it once into Cloudflare's `OWNER_SETUP_TOKEN` field, retain it until deployment completes, and copy it into the clearly labeled setup-link placeholder supplied by the instructions. The user will not need to understand D1, bindings, Wrangler, migrations, or URL-fragment terminology.
 
 The validated command-line path remains:
 
@@ -115,17 +107,19 @@ pnpm exec wrangler login
 pnpm provision:cloudflare
 ```
 
-The provisioner authenticates through Wrangler, creates or reuses the deterministically named D1 database, writes its non-secret ID into ignored `.wrangler.production.jsonc`, configures a per-installation rate-limit namespace, builds the application, applies pending remote migrations, generates the temporary owner bootstrap proof, uploads it with `wrangler deploy --secrets-file`, validates the HTTPS Admin API surface, and prints the authorized first-owner URL. The committed `wrangler.jsonc` intentionally retains a draft zero UUID so account-specific IDs never enter Git.
+The provisioner authenticates through Wrangler, creates or reuses the deterministically named D1 database, writes its non-secret ID into ignored `.wrangler.production.jsonc`, configures a per-installation rate-limit namespace, builds the application, applies pending remote migrations, generates the temporary owner bootstrap proof, uploads it with `wrangler deploy --strict --keep-vars --secrets-file`, validates the HTTPS Admin API surface, and prints the authorized first-owner URL. Every run regenerates the deployment file from committed `wrangler.jsonc` and carries forward only installer-owned D1 identity. Wrangler strict mode stops on conflicting remote settings instead of silently removing dashboard-managed routes or domains, while `--keep-vars` preserves dashboard-managed variables. The committed `wrangler.jsonc` intentionally retains a draft zero UUID so account-specific IDs never enter Git.
 
 The application runtime receives only the logical `DB`, `LOGIN_RATE_LIMITER`, and `OWNER_SETUP_TOKEN` bindings. It never receives Cloudflare account-management credentials or uses a D1 resource ID directly.
 
-Rerunning provisioning reuses a configured D1 database and applies only pending migrations. It never deletes the owner, sessions, Worker, or database. If owner setup is incomplete, it rotates the temporary proof explicitly and prints the replacement URL. If the owner exists, it prints the normal login URL. A different database name is an advanced first-install option:
+Rerunning provisioning reuses a configured D1 database and applies only pending migrations. It never deletes the owner, sessions, Worker, or database. If remote Worker configuration differs materially from the installer-owned configuration, provisioning fails closed before Wrangler applies the code deployment; it does not silently adopt or delete unrelated routes, domains, or settings. If owner setup is incomplete, it rotates the temporary proof explicitly and prints the replacement URL. If the owner exists, it prints the normal login URL. A different database name is an advanced first-install option:
 
 ```sh
 pnpm provision:cloudflare -- --database-name=my-installation-db
 ```
 
 Do not change the database name after an installation is bound. See the [self-hosted provisioning runbook](docs/runbooks/cloudflare-self-hosted-installation.md) for behavior, security constraints, and validation evidence.
+
+Installation evidence is tracked separately: local installation is validated; the CLI provisioner is implemented and validated against real Cloudflare; defensive re-run behavior is covered by regression tests but has not been exercised against a disposable remote custom domain; and the public Deploy to Cloudflare path is not yet clean-account validated.
 
 ### Current configuration
 

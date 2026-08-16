@@ -10,6 +10,8 @@
 - Whether concurrent sync requires locking/coalescing.
 - D1 migration runner atomicity, duration, and recovery.
 - Garmin and Cloudflare limits that affect design.
+- Clean-account validation of Deploy to Cloudflare from the public default branch.
+- Real remote evidence that defensive provisioning rejects an unmanaged route/domain conflict without changing it.
 
 ## Why It Does Not Block Now
 
@@ -38,6 +40,8 @@ The originally selected 600,000-iteration PBKDF2 profile measured approximately 
 The first-run contract transports the bootstrap proof separately from account data. The installation context supplies a `/login#bootstrap=<proof>` URL; fragments stay out of the initial HTTP request, and the SPA erases the fragment immediately and submits the in-memory proof through `X-Owner-Bootstrap-Proof`. The implemented Admin UI validates setup/login input, restores authenticated sessions without exposing protected content while state is unknown, supports logout, and uses the production router for navigation UX. Local development now has a committed secret template and a tested, repeatable `pnpm setup:local` flow that creates or preserves the ignored secret, applies pending local D1 migrations, and prints the complete URL only after migration success. The self-hosted provisioner now implements and has validated the equivalent remote D1, migration, secret, deployment, and setup-link flow through Wrangler. The installer deliberately leaves owner credential creation to the owner in the browser.
 
 Non-loopback Admin API requests over HTTP are now rejected before auth behavior, and HTTPS responses retain secure cookies. A real `workers.dev` deployment validated HTTPS setup status and an HTTP `426 HTTPS_REQUIRED` response from the Admin API. This closes the production transport check while owner-driven browser setup remains an installation action rather than automated provisioning.
+
+The installation audit found that an ignored stale Wrangler configuration removed a dashboard-managed custom domain during a provisioning re-run. The provisioner now regenerates its configuration from committed inputs, carries forward only installer-owned D1 identity, and deploys with Wrangler `--strict` plus `--keep-vars`. Unit regression coverage verifies those invariants. The public Deploy to Cloudflare button remains withheld because the complete implementation has not reached the default branch and no clean-account button deployment has been executed. A disposable remote conflict test and the public button flow are evidence gaps, not reasons to weaken the fail-closed behavior.
 
 ## Constraint While Open
 

@@ -2,7 +2,14 @@
 
 ## Status
 
-**Implemented and infrastructure-validated.** On 2026-08-15, an authenticated Cloudflare installation verified D1 creation and reuse, remote migration application and repeatability, Worker deployment, binding acceptance, HTTPS Admin API behavior, setup status, and authorized-link generation. The installing owner must still complete account creation in their browser; the provisioner never chooses owner credentials.
+Installation status is tracked by path:
+
+- **Local installation:** validated from a clean checkout through owner creation, logout, and login.
+- **Wrangler CLI provisioning:** implemented and validated against real Cloudflare for D1 creation/reuse, migrations, deployment, bindings, HTTPS, setup status, and authorized-link generation.
+- **Safe CLI re-run:** defensive regeneration and fail-closed deployment are regression-tested; a disposable remote custom-domain conflict has not been exercised.
+- **Deploy to Cloudflare:** documented platform behavior only; the public button is withheld until the complete implementation is on the default branch and a clean-account deployment succeeds from that README.
+
+The installing owner must still complete account creation in their browser; the provisioner never chooses owner credentials.
 
 ## Purpose
 
@@ -14,7 +21,7 @@ Provisioning owns Cloudflare management operations. The deployed Worker consumes
 
 ### Browser-assisted deployment
 
-Use the **Deploy to Cloudflare** button in the README. Cloudflare's native flow:
+The public button is not enabled yet. Once the complete installation work is present on the public default branch, Cloudflare's native flow is expected to:
 
 1. asks the user to authorize GitHub/GitLab and Cloudflare;
 2. creates a user-owned fork;
@@ -23,15 +30,20 @@ Use the **Deploy to Cloudflare** button in the README. Cloudflare's native flow:
 5. runs `pnpm build` and `pnpm deploy` through Workers Builds;
 6. applies D1 migrations before deploying the Worker.
 
-For `OWNER_SETUP_TOKEN`, generate a URL-safe random value of at least 43 characters with a password manager and keep it available until owner setup succeeds. After Cloudflare reports the deployed host, open:
+The remaining native-platform limitation is bootstrap handoff. Cloudflare can request a secret but cannot generate it and securely return the matching post-deploy setup URL. The planned copy/paste sequence is:
+
+1. in a password manager, generate one 43-character value using only letters, numbers, `-`, and `_`;
+2. paste it once into Cloudflare's `OWNER_SETUP_TOKEN` field and retain it temporarily;
+3. after Cloudflare reports the deployed host, replace the two labeled placeholders below and open the resulting link;
+4. create the owner, then discard the retained value.
 
 ```text
 https://<worker-host>/login#bootstrap=<OWNER_SETUP_TOKEN>
 ```
 
-This manual secret and fragment handoff is required because Cloudflare's native deploy-button flow can collect a Worker secret but cannot securely return a generated secret in a post-deploy browser URL. Do not put the value in repository files, ordinary Worker variables, issues, or analytics. The application never exposes it through an endpoint.
+Do not put the value in repository files, ordinary Worker variables, issues, or analytics. The application never exposes it through an endpoint. The owner need not run D1, binding, migration, or Wrangler commands in this browser-assisted path.
 
-The button URL was verified to redirect to Cloudflare's authenticated Workers creation flow. A second clean-account deployment was not performed during this change. Based on Cloudflare's documented native flow, the expected user interactions are:
+An earlier button URL was verified only to redirect to Cloudflare's authenticated Workers creation flow. That is not installation validation. Based on Cloudflare's documented native flow, the expected user interactions are:
 
 1. select **Deploy to Cloudflare**;
 2. authorize repository and Cloudflare access and accept the generated resource names;
@@ -40,7 +52,7 @@ The button URL was verified to redirect to Cloudflare's authenticated Workers cr
 5. combine the reported Worker host and retained value using the exact URL above;
 6. choose the owner username and password.
 
-The first four infrastructure operations are platform-managed, but steps 3 and 5 prevent this from being accurately described as one-click.
+The first four infrastructure operations are platform-managed, but steps 3 and 5 prevent this from being accurately described as one-click. Do not publish the button until the default-branch and clean-account checks above pass.
 
 ### Wrangler deployment
 
@@ -66,12 +78,12 @@ The command:
 
 1. verifies Wrangler authentication;
 2. creates or reuses D1 database `universal-data-mcp-worker`;
-3. creates ignored `.wrangler.production.jsonc` with the non-secret database ID and a stable, installation-specific rate-limit namespace, leaving the committed template account-neutral;
+3. regenerates ignored `.wrangler.production.jsonc` from committed configuration with the non-secret database ID and a stable, installation-specific rate-limit namespace, leaving the committed template account-neutral;
 4. builds the application;
 5. applies pending migrations through binding `DB` with `--remote`;
 6. generates a 256-bit bootstrap proof when setup requires one;
 7. writes that proof only to a mode-`0600` temporary file outside the repository;
-8. uploads the proof and code together with Wrangler's `--secrets-file` mechanism;
+8. uploads the proof and code together with Wrangler's `--strict`, `--keep-vars`, and `--secrets-file` mechanisms;
 9. deletes the temporary file;
 10. verifies setup status over HTTPS and rejects unexpected insecure HTTP behavior;
 11. prints the authorized setup URL.
@@ -105,17 +117,25 @@ Do not change the name after `.wrangler.production.jsonc` contains a real databa
 
 ## Re-running safely
 
+### Configuration ownership
+
+The installer owns the Worker code version, static-assets configuration, logical D1 `DB` binding, `LOGIN_RATE_LIMITER` binding, `OWNER_SETUP_TOKEN` upload when setup is incomplete, and migration execution. It does not own unrelated custom domains/routes, dashboard-managed variables, or other remote settings introduced outside the installer.
+
+The ignored deployment file is a cache of installer-owned D1 identity, not authoritative Worker configuration. Each run reads only that D1 identity, regenerates the file from committed `wrangler.jsonc`, and uses Wrangler strict mode. If the regenerated installer configuration conflicts with remote settings, Wrangler stops rather than silently changing them. `--keep-vars` separately preserves dashboard-managed variables. Resolve the reported ownership/configuration conflict explicitly; do not bypass strict mode.
+
 - Existing configured D1: verified by ID and name, then reused.
 - Draft D1 configuration with an existing deterministic database: reused and bound automatically.
 - Missing D1: created once through Wrangler.
 - Applied migrations: Wrangler applies only pending files.
-- Existing Worker: deployed without replacing its secret before setup status is checked.
+- Existing Worker: deployment uses Wrangler strict mode and stops on conflicting remote settings.
 - Existing Worker without this installation's generated configuration: provisioning refuses to overwrite unknown routes or settings.
 - Existing owner: owner, sessions, database, and bootstrap secret remain untouched; the normal login URL is printed.
 - Setup incomplete: a new proof is generated explicitly, deployed, and printed; the previous setup link stops working.
 - Missing/mismatched configured D1: provisioning stops without creating a replacement.
 
 Provisioning is never a reset operation. It does not delete resources or owner data.
+
+Cloudflare's Vite plugin intentionally places the local `.dev.vars` file in ignored Worker build output for local preview. That file is not deployed, and `pnpm build` verifies that its values are absent from `dist/client`. Never archive or share the complete `dist/` directory.
 
 ## Secrets
 
@@ -156,5 +176,7 @@ The authenticated validation established:
 6. setup status and authorized setup URL generation;
 7. rate-limit binding acceptance;
 8. absence of production proof values from Git and client assets.
+
+The public Deploy to Cloudflare path and a disposable remote conflict/re-run remain unvalidated. The feature branch must reach the public default branch through the maintainer's normal merge workflow before the public button can be enabled and tested.
 
 The installing owner completes username/password creation, session restoration, logout, and subsequent login through the generated link. These behaviors are already covered by the production-path Worker and Admin tests; the provisioner deliberately does not create credentials on the owner's behalf.

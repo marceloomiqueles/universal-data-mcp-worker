@@ -123,12 +123,25 @@ export function updateProvisioningConfig(source, database) {
   )
 }
 
+export function regenerateProvisioningConfig(template, database) {
+  return updateProvisioningConfig(template, database)
+}
+
 export function configuredDatabaseId(source) {
   const match = source.match(
     /"d1_databases"\s*:\s*\[\s*\{[\s\S]*?"binding"\s*:\s*"DB"[\s\S]*?"database_id"\s*:\s*"([^"]+)"/u,
   )
   if (!match?.[1])
     throw new Error('Could not read the DB binding from wrangler.jsonc.')
+  return match[1]
+}
+
+export function configuredDatabaseName(source) {
+  const match = source.match(
+    /"d1_databases"\s*:\s*\[\s*\{[\s\S]*?"binding"\s*:\s*"DB"[\s\S]*?"database_name"\s*:\s*"([^"]+)"/u,
+  )
+  if (!match?.[1])
+    throw new Error('Could not read the DB database name from wrangler.jsonc.')
   return match[1]
 }
 
@@ -180,14 +193,9 @@ async function listDatabases() {
   return JSON.parse(result.stdout)
 }
 
-async function ensureDatabase(requestedName) {
-  const source = await readFile(deploymentConfigPath, 'utf8')
+async function ensureDatabase(requestedName, configuredId, template) {
   let databases = await listDatabases()
-  let database = selectDatabase(
-    databases,
-    configuredDatabaseId(source),
-    requestedName,
-  )
+  let database = selectDatabase(databases, configuredId, requestedName)
 
   if (!database) {
     console.log(`Creating D1 database ${requestedName}...`)
@@ -212,12 +220,9 @@ async function ensureDatabase(requestedName) {
     console.log(`Reusing D1 database ${database.name}.`)
   }
 
-  const current = await readFile(deploymentConfigPath, 'utf8')
-  const updated = updateProvisioningConfig(current, database)
-  if (updated !== current) {
-    await writeFile(deploymentConfigPath, updated, { mode: 0o600 })
-    console.log('Updated the DB binding and installation rate-limit namespace.')
-  }
+  const updated = regenerateProvisioningConfig(template, database)
+  await writeFile(deploymentConfigPath, updated, { mode: 0o600 })
+  console.log('Updated the DB binding and installation rate-limit namespace.')
   return database
 }
 
@@ -243,7 +248,7 @@ async function workerExists() {
 
 async function deploy(secret) {
   let secretDirectory
-  const args = ['deploy', '--config', deploymentConfigPath]
+  const args = deploymentArguments()
 
   try {
     if (secret) {
@@ -263,6 +268,18 @@ async function deploy(secret) {
   } finally {
     if (secretDirectory) await rm(secretDirectory, { recursive: true })
   }
+}
+
+export function deploymentArguments(secretPath) {
+  const args = [
+    'deploy',
+    '--strict',
+    '--keep-vars',
+    '--config',
+    deploymentConfigPath,
+  ]
+  if (secretPath) args.push('--secrets-file', secretPath)
+  return args
 }
 
 async function setupStatus(origin) {
@@ -285,11 +302,11 @@ async function validateHttps(origin) {
   }
 }
 
-function requestedDatabaseName(argv) {
+function requestedDatabaseName(argv, existingName) {
   const option = argv.find((argument) =>
     argument.startsWith('--database-name='),
   )
-  if (!option) return defaultDatabaseName
+  if (!option) return existingName ?? defaultDatabaseName
   const value = option.slice('--database-name='.length).trim()
   if (!/^[a-z0-9][a-z0-9-]{0,62}$/u.test(value)) {
     throw new Error(
@@ -306,15 +323,23 @@ export async function provisionCloudflare(argv = process.argv.slice(2)) {
     )
   }
 
-  const databaseName = requestedDatabaseName(argv)
   const deploymentConfigExisted = await access(deploymentConfigPath).then(
     () => true,
     () => false,
   )
-  if (!deploymentConfigExisted) {
-    const template = await readFile(templateConfigPath, 'utf8')
-    await writeFile(deploymentConfigPath, template, { mode: 0o600 })
-  }
+  const previousConfig = deploymentConfigExisted
+    ? await readFile(deploymentConfigPath, 'utf8')
+    : undefined
+  const previousDatabaseId = previousConfig
+    ? configuredDatabaseId(previousConfig)
+    : draftDatabaseId
+  const previousDatabaseName = previousConfig
+    ? configuredDatabaseName(previousConfig)
+    : undefined
+  const databaseName = requestedDatabaseName(argv, previousDatabaseName)
+
+  const template = await readFile(templateConfigPath, 'utf8')
+  await writeFile(deploymentConfigPath, template, { mode: 0o600 })
 
   const existingWorker = await workerExists()
   if (existingWorker && !deploymentConfigExisted) {
@@ -324,7 +349,7 @@ export async function provisionCloudflare(argv = process.argv.slice(2)) {
     )
   }
 
-  await ensureDatabase(databaseName)
+  await ensureDatabase(databaseName, previousDatabaseId, template)
   await runVisible('vite', ['build'])
   await runVisible('wrangler', [
     'd1',
