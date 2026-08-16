@@ -12,6 +12,8 @@
     "setup:local": "node scripts/local-bootstrap.mjs setup",
     "setup:url": "node scripts/local-bootstrap.mjs url",
     "provision:cloudflare": "node scripts/cloudflare-provision.mjs",
+    "db:migrations:apply": "wrangler d1 migrations apply DB --remote",
+    "deploy": "pnpm db:migrations:apply && wrangler deploy",
     "auth:reset:local": "wrangler d1 execute DB --local --command \"DELETE FROM admin_sessions; DELETE FROM owner_credentials;\"",
     "dev": "vite dev",
     "typecheck": "vue-tsc --noEmit -p tsconfig.admin-test.json && tsc --noEmit -p tsconfig.worker-test.json",
@@ -21,6 +23,19 @@
     "test": "node --test tests/local-bootstrap.test.mjs tests/cloudflare-provision.test.mjs && vitest run && vitest run --config vitest.worker.config.ts",
     "build": "vite build",
     "preview": "pnpm build && vite preview"
+  },
+  "cloudflare": {
+    "bindings": {
+      "DB": {
+        "description": "Stores the single owner credential verifier and revocable Admin sessions. Cloudflare provisions this D1 database automatically."
+      },
+      "LOGIN_RATE_LIMITER": {
+        "description": "Limits repeated login attempts before password verification."
+      },
+      "OWNER_SETUP_TOKEN": {
+        "description": "Temporary high-entropy proof for first-owner setup. Generate at least 32 random bytes encoded as Base64URL, retain it until setup succeeds, and never commit it."
+      }
+    }
   },
   "dependencies": {
     "vue": "^3.5.41",

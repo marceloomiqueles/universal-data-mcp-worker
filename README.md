@@ -95,7 +95,19 @@ After setup, open the Admin Web normally and sign in with the owner username and
 
 The repository includes a Wrangler-based provisioning command validated against a real Cloudflare Workers and D1 installation. Creating the first owner remains an explicit browser action by the installing owner.
 
-The intended normal path is:
+[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/marceloomiqueles/universal-data-mcp-worker)
+
+Cloudflare's native deployment flow forks the public repository, provisions and binds D1, runs the repository's remote migrations, configures Workers Builds, and deploys the Worker. During configuration, Cloudflare asks for `OWNER_SETUP_TOKEN`. This is the one unavoidable manual security step: use a password manager to generate and retain a URL-safe random value of at least 43 characters. Do not reuse an account password.
+
+After deployment, Cloudflare shows the Worker URL. Open:
+
+```text
+https://<worker-host>/login#bootstrap=<OWNER_SETUP_TOKEN>
+```
+
+Create the owner account, then discard the copied bootstrap value. Cloudflare currently cannot generate a secret and securely return it as a post-deploy URL fragment, so the button flow is not yet one-click. The [deployment runbook](docs/runbooks/cloudflare-self-hosted-installation.md) describes both this browser flow and the fully automated Wrangler alternative.
+
+The validated command-line path remains:
 
 ```sh
 pnpm install

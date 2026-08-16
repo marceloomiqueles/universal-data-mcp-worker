@@ -12,6 +12,38 @@ Provisioning owns Cloudflare management operations. The deployed Worker consumes
 
 ## Normal path
 
+### Browser-assisted deployment
+
+Use the **Deploy to Cloudflare** button in the README. Cloudflare's native flow:
+
+1. asks the user to authorize GitHub/GitLab and Cloudflare;
+2. creates a user-owned fork;
+3. reads `wrangler.jsonc` and provisions D1 for binding `DB`;
+4. asks for the `OWNER_SETUP_TOKEN` secret declared by `.dev.vars.example`;
+5. runs `pnpm build` and `pnpm deploy` through Workers Builds;
+6. applies D1 migrations before deploying the Worker.
+
+For `OWNER_SETUP_TOKEN`, generate a URL-safe random value of at least 43 characters with a password manager and keep it available until owner setup succeeds. After Cloudflare reports the deployed host, open:
+
+```text
+https://<worker-host>/login#bootstrap=<OWNER_SETUP_TOKEN>
+```
+
+This manual secret and fragment handoff is required because Cloudflare's native deploy-button flow can collect a Worker secret but cannot securely return a generated secret in a post-deploy browser URL. Do not put the value in repository files, ordinary Worker variables, issues, or analytics. The application never exposes it through an endpoint.
+
+The button URL was verified to redirect to Cloudflare's authenticated Workers creation flow. A second clean-account deployment was not performed during this change. Based on Cloudflare's documented native flow, the expected user interactions are:
+
+1. select **Deploy to Cloudflare**;
+2. authorize repository and Cloudflare access and accept the generated resource names;
+3. generate, paste, and retain `OWNER_SETUP_TOKEN`;
+4. start deployment;
+5. combine the reported Worker host and retained value using the exact URL above;
+6. choose the owner username and password.
+
+The first four infrastructure operations are platform-managed, but steps 3 and 5 prevent this from being accurately described as one-click.
+
+### Wrangler deployment
+
 Requirements:
 
 - Node.js and pnpm versions listed in the root README;

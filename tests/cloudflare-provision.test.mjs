@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { readFile } from 'node:fs/promises'
 import { describe, it } from 'node:test'
 
 import {
@@ -26,6 +27,23 @@ const draftConfig = `{
 }`
 
 describe('Cloudflare provisioning configuration', () => {
+  it('declares the native Workers Builds migration-before-deploy flow', async () => {
+    const packageJson = JSON.parse(await readFile('package.json', 'utf8'))
+
+    assert.equal(
+      packageJson.scripts['db:migrations:apply'],
+      'wrangler d1 migrations apply DB --remote',
+    )
+    assert.equal(
+      packageJson.scripts.deploy,
+      'pnpm db:migrations:apply && wrangler deploy',
+    )
+    assert.match(
+      packageJson.cloudflare.bindings.OWNER_SETUP_TOKEN.description,
+      /Temporary high-entropy proof/u,
+    )
+  })
+
   it('updates D1 and rate-limit bindings without changing their logical names', () => {
     const database = {
       name: 'universal-data-mcp-worker',

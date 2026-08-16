@@ -21,6 +21,7 @@ Initial provisioning creates one new installation from a known source revision. 
 - A validated first Cloudflare installation.
 - At least one backward-compatible application and D1 migration upgrade.
 - Observed Workers Builds or owner-triggered update behavior on a user fork.
+- Evidence about how Deploy-to-Cloudflare-created forks receive and reconcile upstream changes without overwriting owner-specific resource configuration.
 - Preview/production binding validation.
 - A tested recovery path for build, deploy, and migration failure.
 
