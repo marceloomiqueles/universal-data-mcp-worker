@@ -19,7 +19,7 @@ Terms used:
 | Working assumptions | Garmin provides evidence for the first slice; D1 is used only where persistence is needed; standard MCP should be sufficient for ChatGPT until proven otherwise |
 | Gaps | Contracts, Garmin tools, sync/freshness/retention values, libraries, and real platform/provider behavior |
 | Out of scope | Enterprise platform, universal model, dynamic plugins, additional AI clients, and speculative infrastructure |
-| To validate | Workers/free-tier compatibility, end-to-end ChatGPT behavior, idempotency, Garmin/D1 limits, and operation by non-technical users |
+| To validate | Garmin data behavior, idempotency, Garmin/D1 limits, and operation by non-technical users |
 
 Assumptions are not architectural commitments. If evidence contradicts them, update the documentation and record the resulting decision.
 
@@ -58,7 +58,7 @@ Cloudflare Worker / deployment
 └── D1 where appropriate
 ```
 
-Exact paths, router, and internal code structure are implementation gaps. Additional Workers, Queues, Durable Objects, KV, R2, and external services have not been justified.
+Exact future product paths and internal structures remain implementation-driven. One KV namespace is now justified for the standard Cloudflare OAuth provider that protects MCP; additional Workers, Queues, Durable Objects, KV namespaces, R2, and external services remain unjustified.
 
 Installation provisioning is outside the application runtime. Project-owned tooling authenticates through Wrangler to create or bind D1, apply migrations, configure Worker secrets, and deploy. Runtime code receives only logical bindings such as `env.DB`; it does not receive Cloudflare management credentials or depend on resource IDs. The Wrangler provisioning path has been validated against a real Cloudflare installation.
 
@@ -100,7 +100,7 @@ The architecture separates:
 
 The shared runtime does not know Garmin. Only active integrations expose capabilities. Tools minimize data and answer bounded queries rather than returning massive dumps.
 
-ChatGPT is the first supported and validated client. No client-specific adapter is assumed while standard MCP is sufficient. Real client behavior must be validated.
+The initial shared runtime uses stable MCP `2025-11-25` Streamable HTTP and exposes one bounded read-only registry tool. MCP clients authenticate separately from the Admin browser session through OAuth 2.1 authorization code with PKCE; the existing owner supplies identity and consent, while provider-managed OAuth state lives in KV. The remote MCP, OAuth flow, tool discovery, indirect natural-language selection, non-empty and empty results, owner revocation, and reauthorization have been validated with ChatGPT Work developer mode against real Cloudflare deployments. This evidence covers the current read-only tool and tested client mode only; it does not imply support for every ChatGPT plan, MCP client, write action, resource, or prompt. No client-specific adapter is needed while standard MCP remains sufficient.
 
 ## Persistence
 

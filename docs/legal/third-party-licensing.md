@@ -26,6 +26,8 @@ The direct scaffold dependencies were installed from the npm registry and are lo
 
 The owner-session backend adds `@cloudflare/vitest-pool-workers` 0.21.3 as a development-only dependency under MIT terms. It is used to test D1 and Worker behavior under workerd; authentication runtime code uses platform Web Crypto and adds no runtime package.
 
+The minimal MCP runtime adds `@modelcontextprotocol/sdk` 1.30.0 under the MIT License and uses its Web-standard Streamable HTTP transport. OAuth uses `@cloudflare/workers-oauth-provider` 0.10.3 under the MIT License. Zod 4.1.12, also MIT licensed, supplies the strict tool input and output schemas required by the SDK. Resolved provenance is recorded in `pnpm-lock.yaml`; the packages' bundled license files remain authoritative.
+
 This inventory records package provenance; the packages' own license files and metadata remain authoritative. Recheck licenses and notices when dependency versions change.
 
 ## Garmin

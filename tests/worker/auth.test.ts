@@ -13,12 +13,17 @@ const assets = {
 const allowAllLogins: RateLimit = {
   limit: async () => ({ success: true }),
 }
+const allowAllOAuth: RateLimit = {
+  limit: async () => ({ success: true }),
+}
 
 function workerEnv(overrides: Partial<Env> = {}): Env {
   return {
     ASSETS: assets,
     DB: env.DB,
     LOGIN_RATE_LIMITER: allowAllLogins,
+    MCP_OAUTH_RATE_LIMITER: allowAllOAuth,
+    OAUTH_KV: env.OAUTH_KV,
     OWNER_SETUP_TOKEN: env.OWNER_SETUP_TOKEN,
     ...overrides,
   }
@@ -467,7 +472,7 @@ describe('authorization and routing boundaries', () => {
     )
   })
 
-  it('protects Admin API paths by default and leaves MCP unchanged', async () => {
+  it('protects Admin API paths by default and keeps MCP separate', async () => {
     for (const path of ['/api', '/api/', '/api/health?check=1']) {
       const response = await handleRequest(request(path), workerEnv())
       expect(response.status).toBe(401)
@@ -475,11 +480,8 @@ describe('authorization and routing boundaries', () => {
 
     for (const path of ['/mcp', '/mcp/', '/mcp/session?check=1']) {
       const response = await handleRequest(request(path), workerEnv())
-      expect(response.status).toBe(501)
-      await expect(response.json()).resolves.toEqual({
-        boundary: 'mcp',
-        status: 'not-implemented',
-      })
+      expect(response.status).toBe(401)
+      expect(response.headers.get('www-authenticate')).toContain('Bearer')
     }
   })
 
@@ -531,7 +533,7 @@ describe('authorization and routing boundaries', () => {
       request('/mcp', {}, 'http://admin.example.test'),
       workerEnv(),
     )
-    expect(mcp.status).toBe(501)
+    expect(mcp.status).toBe(426)
   })
 
   it.each(['/status', '/apiary', '/mcproxy'])(

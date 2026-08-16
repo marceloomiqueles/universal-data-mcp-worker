@@ -8,7 +8,7 @@ Garmin Connect → Cloudflare Worker → D1 where appropriate → MCP → ChatGP
 
 ## Current Status
 
-The project has an initial deployable scaffold and its first product slice. One Cloudflare Worker serves the Vue/Vuetify Admin SPA, a D1-backed single-owner Admin authentication API, and the reserved MCP boundary. First-run owner setup, login, server-managed session restoration, logout, and default Admin API protection are implemented and validated locally. Garmin integration and MCP protocol behavior are not implemented yet.
+The project has an initial deployable scaffold, single-owner Admin authentication, a compiled integration registry, and a minimal read-only MCP server. One Cloudflare Worker serves the Vue/Vuetify Admin SPA, authenticated Admin API, and an OAuth-protected MCP 2025-11-25 Streamable HTTP endpoint. The `list_integrations` tool reports the real compiled registry; Garmin is registered but not configured. Read-only ChatGPT connectivity is validated, but Garmin provider/data access is not implemented yet.
 
 The current foundation proves the single-deployment build and routing model without prematurely inventing product contracts.
 
@@ -35,7 +35,7 @@ The operational goal is additional infrastructure cost close to `$0` for reasona
 - Standard MCP.
 - Admin Web SPA with Vue 3, TypeScript, Vuetify, and Vue Router.
 - One pnpm root project built with Vite and the official Cloudflare Vite integration.
-- ChatGPT as the first supported and validated client.
+- ChatGPT as the first client targeted for end-to-end validation.
 
 ## Principles
 
@@ -50,7 +50,7 @@ The operational goal is additional infrastructure cost close to `$0` for reasona
 
 ## Current Scope
 
-This repository contains a working infrastructure scaffold and the product direction. It does not provide usable Garmin or MCP functionality yet.
+This repository contains a working infrastructure scaffold and a validated minimal MCP connectivity surface. It does not provide usable Garmin data yet.
 
 Without explicit agreement, the scope excludes multi-tenancy, enterprise RBAC, billing, fictional verticals, a plugin marketplace, dynamic code loading, a universal sports model, forecasting, ML, BI, and speculative infrastructure.
 
@@ -109,9 +109,9 @@ pnpm exec wrangler login
 pnpm provision:cloudflare
 ```
 
-The provisioner authenticates through Wrangler, creates or reuses the deterministically named D1 database, writes its non-secret ID into ignored `.wrangler.production.jsonc`, configures a per-installation rate-limit namespace, builds the application, applies pending remote migrations, generates the temporary owner bootstrap proof, uploads it with `wrangler deploy --strict --keep-vars --secrets-file`, validates the HTTPS Admin API surface, and prints the authorized first-owner URL. Every run regenerates the deployment file from committed `wrangler.jsonc` and carries forward only installer-owned D1 identity. Wrangler strict mode stops on conflicting remote settings instead of silently removing dashboard-managed routes or domains, while `--keep-vars` preserves dashboard-managed variables. The committed `wrangler.jsonc` omits `database_id`, which is Cloudflare's supported automatic-provisioning contract; account-specific IDs never enter Git.
+The provisioner authenticates through Wrangler, creates or reuses the deterministically named D1 database, writes its non-secret ID into ignored `.wrangler.production.jsonc`, configures per-installation login and OAuth rate-limit namespaces, builds the application, applies pending remote migrations, generates the temporary owner bootstrap proof, uploads it with `wrangler deploy --strict --keep-vars --secrets-file`, validates the HTTPS Admin API surface, and prints the authorized first-owner URL. Wrangler automatically provisions and preserves the project-owned `OAUTH_KV` binding. Every run regenerates the deployment file from committed `wrangler.jsonc` and carries forward only installer-owned D1 identity. Wrangler strict mode stops on conflicting remote settings instead of silently removing dashboard-managed routes or domains, while `--keep-vars` preserves dashboard-managed variables. The committed `wrangler.jsonc` omits account-specific resource IDs so they never enter Git.
 
-The application runtime receives only the logical `DB`, `LOGIN_RATE_LIMITER`, and `OWNER_SETUP_TOKEN` bindings. It never receives Cloudflare account-management credentials or uses a D1 resource ID directly.
+The application runtime receives only logical bindings, including `DB`, `OAUTH_KV`, the two rate limiters, and `OWNER_SETUP_TOKEN`. It never receives Cloudflare account-management credentials or uses resource IDs directly.
 
 Rerunning provisioning reuses a configured D1 database and applies only pending migrations. It never deletes the owner, sessions, Worker, or database. If remote Worker configuration differs materially from the installer-owned configuration, provisioning fails closed before Wrangler applies the code deployment; it does not silently adopt or delete unrelated routes, domains, or settings. If owner setup is incomplete, it rotates the temporary proof explicitly and prints the replacement URL. If the owner exists, it prints the normal login URL. A different database name is an advanced first-install option:
 
@@ -130,6 +130,16 @@ Installation evidence is tracked separately: local installation is validated; th
 | `OWNER_SETUP_TOKEN` | Authorizes only the first owner creation | Secret | Required until the owner exists | Ignored `.dev.vars`; create with `pnpm setup:local` | Generated by `provision:cloudflare` and uploaded through a temporary `--secrets-file`; remove after setup when operationally convenient |
 | `DB` | Stores the singleton owner verifier and revocable session digests | D1 binding, not a secret | Required | Declared in `wrangler.jsonc`; local state persists under ignored `.wrangler/` | Bind to the deployment's real D1 database |
 | `LOGIN_RATE_LIMITER` | Limits repeated login work per Cloudflare source address | Rate Limiting binding, not a secret | Required | Declared in `wrangler.jsonc` and emulated by the local runtime | Provisioner derives a stable namespace from the installation D1 ID; Cloudflare accepted the deployed binding |
+| `MCP_OAUTH_RATE_LIMITER` | Bounds OAuth registration, token, and authorization traffic | Rate Limiting binding, not a secret | Required for MCP OAuth | Declared in `wrangler.jsonc` and emulated by the local runtime | Provisioner derives a separate stable namespace from the installation D1 ID |
+| `OAUTH_KV` | Stores OAuth clients, grants, short-lived codes, and hashed token records managed by the Cloudflare OAuth provider | KV binding, not a secret | Required for MCP OAuth | Automatically backed by local Wrangler state | Automatically provisioned by Wrangler/Cloudflare and kept outside D1 |
+
+## MCP status
+
+The Worker exposes standard MCP Streamable HTTP at `/mcp`, targeting the stable `2025-11-25` revision. It requires a separate OAuth 2.1 authorization-code flow with PKCE and the read-only `integrations:read` scope; the Admin browser cookie is not an MCP credential. The existing owner authenticates and explicitly authorizes the client through the same deployment.
+
+Exactly one tool is available: `list_integrations`. It reads the shared compiled registry directly and returns only integration id, name, description, and setup status. It performs no writes and returns an empty collection normally when no integration is registered.
+
+The read-only connection was validated on 2026-08-16 against real Cloudflare deployments and ChatGPT Work in developer mode. ChatGPT completed OAuth 2.1 with PKCE through the deployment owner, discovered `list_integrations`, selected it from an indirect data-source question, and correctly distinguished registered Garmin from accessible data while its status was `not_configured`. A disposable deployment with an empty compiled registry returned no integrations, and ChatGPT reported the empty state without inventing records. Owner revocation invalidated the connected ChatGPT credential, and a new authorization restored access. MCP Inspector independently validated initialization, tool discovery, and invocation against the canonical HTTPS deployment. This evidence covers only the current read-only tool and tested client mode; it does not claim Garmin data tools, write actions, other ChatGPT plans, or other MCP clients.
 
 ### Reset local owner authentication
 

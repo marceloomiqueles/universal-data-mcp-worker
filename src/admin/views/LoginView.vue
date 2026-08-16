@@ -75,7 +75,14 @@ async function submit() {
 
   password.value = ''
   passwordConfirmation.value = ''
-  if (authenticated) await router.replace(destination())
+  if (authenticated) {
+    const next = destination()
+    if (next.startsWith('/api/mcp/oauth/authorize?')) {
+      globalThis.location.assign(next)
+      return
+    }
+    await router.replace(next)
+  }
 }
 </script>
 

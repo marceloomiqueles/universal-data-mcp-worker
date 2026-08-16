@@ -32,15 +32,24 @@
       "LOGIN_RATE_LIMITER": {
         "description": "Limits repeated login attempts before password verification."
       },
+      "MCP_OAUTH_RATE_LIMITER": {
+        "description": "Bounds public OAuth registration, token, and authorization requests."
+      },
+      "OAUTH_KV": {
+        "description": "Stores OAuth clients, grants, authorization codes, and hashed token records managed by the Cloudflare OAuth provider."
+      },
       "OWNER_SETUP_TOKEN": {
         "description": "Temporary high-entropy proof for first-owner setup. Generate at least 32 random bytes encoded as Base64URL, retain it until setup succeeds, and never commit it."
       }
     }
   },
   "dependencies": {
+    "@cloudflare/workers-oauth-provider": "0.10.3",
+    "@modelcontextprotocol/sdk": "1.30.0",
     "vue": "^3.5.41",
     "vue-router": "^4.6.4",
-    "vuetify": "^4.1.9"
+    "vuetify": "^4.1.9",
+    "zod": "4.1.12"
   },
   "devDependencies": {
     "@cloudflare/vite-plugin": "^1.52.1",
