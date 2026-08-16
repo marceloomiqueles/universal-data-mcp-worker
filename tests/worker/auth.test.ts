@@ -436,6 +436,37 @@ describe('login and session lifecycle', () => {
 })
 
 describe('authorization and routing boundaries', () => {
+  it('lists registered integrations only for an authenticated owner', async () => {
+    const unauthenticated = await handleRequest(
+      request('/api/integrations'),
+      workerEnv(),
+    )
+    expect(unauthenticated.status).toBe(401)
+
+    const { cookie } = await setupOwner()
+    const authenticated = await handleRequest(
+      request('/api/integrations', { headers: { cookie } }),
+      workerEnv(),
+    )
+    expect(authenticated.status).toBe(200)
+    expect(authenticated.headers.get('cache-control')).toBe('no-store')
+
+    const body = await authenticated.json<unknown>()
+    expect(body).toEqual({
+      integrations: [
+        {
+          id: 'garmin',
+          name: 'Garmin',
+          description: 'Garmin integration for health and activity data.',
+          status: 'not_configured',
+        },
+      ],
+    })
+    expect(JSON.stringify(body)).not.toMatch(
+      /credential|provider|secret|token|implementation/iu,
+    )
+  })
+
   it('protects Admin API paths by default and leaves MCP unchanged', async () => {
     for (const path of ['/api', '/api/', '/api/health?check=1']) {
       const response = await handleRequest(request(path), workerEnv())

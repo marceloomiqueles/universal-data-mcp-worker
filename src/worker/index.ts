@@ -1,4 +1,5 @@
 import { handleAdminApi, type AuthEnv } from './admin-api/auth'
+import { integrationRegistry } from './integrations'
 
 export interface Env extends AuthEnv {
   ASSETS: {
@@ -27,7 +28,7 @@ export async function handleRequest(
   const { pathname } = new URL(request.url)
 
   if (isBoundary(pathname, '/api')) {
-    return handleAdminApi(request, env)
+    return handleAdminApi(request, env, integrationRegistry)
   }
 
   if (isBoundary(pathname, '/mcp')) {

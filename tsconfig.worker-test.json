@@ -7,5 +7,10 @@
       "vitest/globals"
     ]
   },
-  "include": ["src/worker/**/*.ts", "tests/worker/**/*.ts"]
+  "include": [
+    "src/core/**/*.ts",
+    "src/integrations/**/*.ts",
+    "src/worker/**/*.ts",
+    "tests/worker/**/*.ts"
+  ]
 }

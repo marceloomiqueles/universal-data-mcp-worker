@@ -6,6 +6,7 @@ import {
 } from 'vue-router'
 
 import HomeView from './views/HomeView.vue'
+import IntegrationsView from './views/IntegrationsView.vue'
 import LoadingView from './views/LoadingView.vue'
 import LoginView from './views/LoginView.vue'
 import NotFoundView from './views/NotFoundView.vue'
@@ -14,6 +15,11 @@ import { adminSession, type AdminSession } from './session'
 
 export const routes: RouteRecordRaw[] = [
   { path: '/', name: 'home', component: HomeView },
+  {
+    path: '/integrations',
+    name: 'integrations',
+    component: IntegrationsView,
+  },
   { path: '/login', name: 'login', component: LoginView },
   { path: '/status', name: 'status', component: StatusView },
   { path: '/loading', name: 'loading', component: LoadingView },
