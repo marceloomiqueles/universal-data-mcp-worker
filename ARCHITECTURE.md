@@ -19,7 +19,7 @@ Terms used:
 | Working assumptions | Garmin provides evidence for the first slice; D1 is used only where persistence is needed; standard MCP should be sufficient for ChatGPT until proven otherwise |
 | Gaps | Contracts, Garmin tools, sync/freshness/retention values, libraries, and real platform/provider behavior |
 | Out of scope | Enterprise platform, universal model, dynamic plugins, additional AI clients, and speculative infrastructure |
-| To validate | Workers/free-tier compatibility, end-to-end ChatGPT behavior, idempotency, Garmin/D1 limits, and operation by non-technical users |
+| To validate | Garmin data behavior, idempotency, Garmin/D1 limits, and operation by non-technical users |
 
 Assumptions are not architectural commitments. If evidence contradicts them, update the documentation and record the resulting decision.
 
@@ -100,7 +100,7 @@ The architecture separates:
 
 The shared runtime does not know Garmin. Only active integrations expose capabilities. Tools minimize data and answer bounded queries rather than returning massive dumps.
 
-The initial shared runtime uses stable MCP `2025-11-25` Streamable HTTP and exposes one bounded read-only registry tool. MCP clients authenticate separately from the Admin browser session through OAuth 2.1 authorization code with PKCE; the existing owner supplies identity and consent, while provider-managed OAuth state lives in KV. ChatGPT is the first intended client. No client-specific adapter is assumed while standard MCP is sufficient, and real ChatGPT behavior remains unvalidated.
+The initial shared runtime uses stable MCP `2025-11-25` Streamable HTTP and exposes one bounded read-only registry tool. MCP clients authenticate separately from the Admin browser session through OAuth 2.1 authorization code with PKCE; the existing owner supplies identity and consent, while provider-managed OAuth state lives in KV. The remote MCP, OAuth flow, tool discovery, indirect natural-language selection, non-empty and empty results, owner revocation, and reauthorization have been validated with ChatGPT Work developer mode against real Cloudflare deployments. This evidence covers the current read-only tool and tested client mode only; it does not imply support for every ChatGPT plan, MCP client, write action, resource, or prompt. No client-specific adapter is needed while standard MCP remains sufficient.
 
 ## Persistence
 
