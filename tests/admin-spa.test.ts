@@ -25,6 +25,7 @@ afterEach(() => {
   mountedApp = undefined
   mountedElement = undefined
   vi.restoreAllMocks()
+  vi.unstubAllGlobals()
   window.innerWidth = 1024
   window.dispatchEvent(new Event('resize'))
 })
@@ -397,6 +398,15 @@ describe('Authenticated application shell', () => {
     expect(element.textContent).toContain('Page not found')
   })
 
+  it('exposes Integrations in authenticated navigation', async () => {
+    const { element } = await renderAuthenticated()
+    const link = [...element.querySelectorAll<HTMLAnchorElement>('a')].find(
+      (candidate) => candidate.textContent?.includes('Integrations'),
+    )
+
+    expect(link?.getAttribute('href')).toBe('/integrations')
+  })
+
   it('uses a temporary navigation drawer on narrow screens', async () => {
     window.innerWidth = 375
     window.dispatchEvent(new Event('resize'))
@@ -419,5 +429,92 @@ describe('Authenticated application shell', () => {
 
     expect(element.querySelector('[aria-label="Toggle navigation"]')).toBeNull()
     expect(element.querySelector('.v-navigation-drawer--active')).not.toBeNull()
+  })
+})
+
+describe('Integrations page', () => {
+  it('loads and renders the registry response through the production API path', async () => {
+    const integrationRequest = vi.fn<typeof fetch>().mockResolvedValue(
+      json({
+        integrations: [
+          {
+            id: 'garmin',
+            name: 'Garmin',
+            description: 'Garmin integration for health and activity data.',
+            status: 'not_configured',
+          },
+        ],
+      }),
+    )
+    vi.stubGlobal('fetch', integrationRequest)
+
+    const { element, router } = await render({
+      path: '/integrations',
+      responses: [authenticated()],
+    })
+
+    await vi.waitFor(() => {
+      expect(element.textContent).toContain('Garmin')
+    })
+    expect(router.currentRoute.value.path).toBe('/integrations')
+    expect(element.textContent).toContain(
+      'Garmin integration for health and activity data.',
+    )
+    expect(element.textContent).toContain('Not configured')
+    expect(integrationRequest).toHaveBeenCalledWith('/api/integrations', {
+      credentials: 'same-origin',
+    })
+  })
+
+  it('shows a loading state while the registry request is pending', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn<typeof fetch>(() => new Promise(() => {})),
+    )
+
+    const { element } = await render({
+      path: '/integrations',
+      responses: [authenticated()],
+    })
+
+    expect(element.textContent).toContain('Loading integrations…')
+    expect(element.textContent).not.toContain('No integrations')
+  })
+
+  it('shows an empty state for a deployment without registered integrations', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn<typeof fetch>().mockResolvedValue(json({ integrations: [] })),
+    )
+
+    const { element } = await render({
+      path: '/integrations',
+      responses: [authenticated()],
+    })
+
+    await vi.waitFor(() => {
+      expect(element.textContent).toContain(
+        'No integrations are included in this deployment.',
+      )
+    })
+  })
+
+  it('shows an API failure state without fake integration data', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn<typeof fetch>().mockResolvedValue(json({ error: {} }, 500)),
+    )
+
+    const { element } = await render({
+      path: '/integrations',
+      responses: [authenticated()],
+    })
+
+    await vi.waitFor(() => {
+      expect(element.textContent).toContain(
+        'The integration list could not be loaded. Try again later.',
+      )
+    })
+    expect(element.textContent).not.toContain('Garmin')
   })
 })

@@ -7,6 +7,7 @@ import { useAdminSession } from './session'
 
 const navigation = [
   { title: 'Overview', to: '/' },
+  { title: 'Integrations', to: '/integrations' },
   { title: 'Status', to: '/status' },
 ]
 
