@@ -2,7 +2,7 @@
 
 ## Supported versions
 
-There are no released or supported versions yet. The repository currently contains documentation only. This section will be updated when the first release exists.
+There are no released or supported versions yet. The repository contains an unreleased scaffold and a complete initial Admin authentication slice: first-owner setup, login, session restoration, logout, route-guard UX, and the Worker-enforced Admin API boundary. This section will be updated when the first release exists.
 
 ## What to report privately
 

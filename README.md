@@ -8,7 +8,7 @@ Garmin Connect → Cloudflare Worker → D1 where appropriate → MCP → ChatGP
 
 ## Current Status
 
-The project has an initial deployable scaffold: a Vue/Vuetify Admin SPA and one Cloudflare Worker with reserved Admin API and MCP route boundaries. The boundaries are validated locally, but no Garmin integration, authentication, MCP protocol behavior, D1 schema, migration, sync, or other product functionality exists yet.
+The project has an initial deployable scaffold and its first product slice. One Cloudflare Worker serves the Vue/Vuetify Admin SPA, a D1-backed single-owner Admin authentication API, and the reserved MCP boundary. First-run owner setup, login, server-managed session restoration, logout, and default Admin API protection are implemented and validated locally. Garmin integration and MCP protocol behavior are not implemented yet.
 
 The current foundation proves the single-deployment build and routing model without prematurely inventing product contracts.
 
@@ -61,16 +61,58 @@ Requirements:
 - Node.js 22.13 or newer;
 - pnpm 11.22.0 or a compatible pnpm 11 release.
 
-Install dependencies and start the local Cloudflare/Vite development environment:
+Install dependencies, create an ignored local bootstrap secret, apply the local D1 migration, and start the Cloudflare/Vite development environment:
 
 ```sh
 pnpm install
+pnpm setup:local
+pnpm exec wrangler d1 migrations apply DB --local
 pnpm dev
 ```
 
-The development server exposes the SPA and the Worker route boundaries in one local application. See [TESTING.md](TESTING.md) for verified validation commands.
+`pnpm setup:local` uses Node's cryptographically secure random generator to create `.dev.vars` with mode `0600`. It refuses to overwrite an existing file and prints the authorized first-run URL:
 
-There is no end-user installation or deployment guide because product functionality and a real deployment procedure do not exist yet. That future guide must validate the intended flow before documenting it:
+```text
+http://localhost:5173/login#bootstrap=<generated-proof>
+```
+
+If the development server is already running or the URL is needed again, print it deterministically from the configured secret:
+
+```sh
+pnpm setup:url
+```
+
+Open that URL, choose the owner username and a password of at least 12 characters, confirm it, and select **Create account**. The URL fragment is not sent while loading the SPA. The SPA removes it immediately, keeps the proof only in memory, and submits it separately from account data. The browser receives an `HttpOnly` session cookie and opens the authenticated Admin shell.
+
+The committed [`.dev.vars.example`](.dev.vars.example) lists the required local secret without providing a usable value. Actual `.dev.vars` files are ignored. The backend accepts the proof only while no owner exists. After setup, the proof can and should be removed from local or production secret configuration; use `pnpm setup:url` before removing it if the authorized URL is still needed.
+
+After setup, open the Admin Web normally and sign in with the owner username and password. Use **Sign out** in the application bar to invalidate the current session. See [TESTING.md](TESTING.md) for the validated API and UI behavior.
+
+There is no end-user deployment guide because production deployment and the complete product flow have not been validated. A real Cloudflare deployment must replace the placeholder D1 identifier, apply migrations, generate one high-entropy proof, configure it with `pnpm exec wrangler secret put OWNER_SETUP_TOKEN`, and provide the owner with `https://<deployment>/login#bootstrap=<proof>`. Generate a suitable value with the tested command below; do not invent one manually or put it in a query string, `VITE_*` variable, or ordinary Wrangler variable.
+
+```sh
+node --input-type=module -e "import { randomBytes } from 'node:crypto'; console.log(randomBytes(32).toString('base64url'))"
+```
+
+Non-loopback Admin API traffic is rejected unless it uses HTTPS. Cloudflare's edge must also be configured to redirect visitor HTTP traffic to HTTPS before production use. This configuration has not been validated on a deployed instance. Automated generation and presentation of the production setup link remain deployment gaps.
+
+### Current configuration
+
+| Name | Purpose | Classification | Requirement | Local development | Production |
+|---|---|---|---|---|---|
+| `OWNER_SETUP_TOKEN` | Authorizes only the first owner creation | Secret | Required until the owner exists | Ignored `.dev.vars`; create with `pnpm setup:local` | Cloudflare secret via `wrangler secret put`; remove after setup |
+| `DB` | Stores the singleton owner verifier and revocable session digests | D1 binding, not a secret | Required | Declared in `wrangler.jsonc`; local state persists under ignored `.wrangler/` | Bind to the deployment's real D1 database |
+| `LOGIN_RATE_LIMITER` | Limits repeated login work per Cloudflare source address | Rate Limiting binding, not a secret | Required | Declared in `wrangler.jsonc` and emulated by the local runtime | Declared in `wrangler.jsonc`; verify on the deployed Worker |
+
+### Reset local owner authentication
+
+To remove only the local owner and sessions while preserving the local schema and migration history:
+
+```sh
+pnpm auth:reset:local
+```
+
+This command is destructive to **local development auth state only**. It deletes the local owner credential and every local Admin session. It does not target a remote database. Create or retain a valid local bootstrap secret, run `pnpm setup:url`, and repeat first-owner setup afterward.
 
 ```text
 Deploy → Admin Web → connect Garmin → sync → connect MCP → ChatGPT

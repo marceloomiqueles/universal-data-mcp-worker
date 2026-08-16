@@ -5,4 +5,9 @@ import vuetify from 'vite-plugin-vuetify'
 
 export default defineConfig({
   plugins: [vue(), vuetify({ autoImport: true }), cloudflare()],
+  server: {
+    host: '127.0.0.1',
+    port: 5173,
+    strictPort: true,
+  },
 })

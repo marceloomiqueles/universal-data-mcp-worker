@@ -3,6 +3,24 @@
   "name": "universal-data-mcp-worker",
   "main": "./src/worker/index.ts",
   "compatibility_date": "2026-08-15",
+  "ratelimits": [
+    {
+      "name": "LOGIN_RATE_LIMITER",
+      "namespace_id": "1001001",
+      "simple": {
+        "limit": 5,
+        "period": 60,
+      },
+    },
+  ],
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "universal-data-mcp-worker",
+      "database_id": "00000000-0000-0000-0000-000000000000",
+      "migrations_dir": "migrations",
+    },
+  ],
   "assets": {
     "directory": "./dist/client",
     "binding": "ASSETS",

@@ -17,8 +17,10 @@ body {
   margin: 0;
 }
 
-.login-placeholder {
-  display: grid;
-  min-height: calc(100vh - 160px);
-  place-items: center;
+.min-height-screen {
+  min-height: 100vh;
+}
+
+.auth-card {
+  width: min(100%, 440px);
 }

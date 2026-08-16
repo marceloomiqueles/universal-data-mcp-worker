@@ -24,6 +24,8 @@ The direct scaffold dependencies were installed from the npm registry and are lo
 - TypeScript 6.0.3 under Apache-2.0;
 - Cloudflare Workers types 5.20260814.1 under MIT or Apache-2.0 terms.
 
+The owner-session backend adds `@cloudflare/vitest-pool-workers` 0.21.3 as a development-only dependency under MIT terms. It is used to test D1 and Worker behavior under workerd; authentication runtime code uses platform Web Crypto and adds no runtime package.
+
 This inventory records package provenance; the packages' own license files and metadata remain authoritative. Recheck licenses and notices when dependency versions change.
 
 ## Garmin

@@ -151,7 +151,7 @@ The initial deployment has one owner/admin. Authentication requires an admin cre
 
 The session is server-managed. The SPA neither reads nor persists the session token. Frontend route guards are navigation UX only; the Admin API enforces authentication.
 
-Endpoints, payloads, libraries, and detailed UX are not decided.
+The first product slice uses D1 for the singleton owner credential and revocable Admin sessions. Passwords use a versioned PBKDF2-HMAC-SHA-256 verifier through Workers Web Crypto. Opaque session tokens are stored only as SHA-256 digests and delivered in an `HttpOnly`, `SameSite=Strict`, `/api`-scoped cookie with a 12-hour absolute lifetime. A temporary Cloudflare `OWNER_SETUP_TOKEN` protects atomic first-owner creation. The deployment owner enters through a setup URL carrying the proof in its fragment; the SPA removes the fragment immediately, retains the proof only in memory, and transports it in a dedicated setup header rather than presenting it as account data. The same project-owned session controller restores the session, drives setup/login/logout UI state, and supports navigation guards; Admin API authorization remains authoritative. A native Cloudflare Rate Limiting binding bounds repeated login work without persistent lockout. Non-loopback Admin API traffic requires HTTPS, while loopback HTTP remains available for local development. Expired session cleanup is bounded and opportunistic within existing auth operations.
 
 ## Scaffold and Repository Shape
 

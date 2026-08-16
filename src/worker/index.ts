@@ -1,4 +1,6 @@
-interface Env {
+import { handleAdminApi, type AuthEnv } from './admin-api/auth'
+
+export interface Env extends AuthEnv {
   ASSETS: {
     fetch(request: Request): Promise<Response>
   }
@@ -25,7 +27,7 @@ export async function handleRequest(
   const { pathname } = new URL(request.url)
 
   if (isBoundary(pathname, '/api')) {
-    return boundaryResponse('admin-api')
+    return handleAdminApi(request, env)
   }
 
   if (isBoundary(pathname, '/mcp')) {

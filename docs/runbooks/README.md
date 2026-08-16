@@ -2,7 +2,18 @@
 
 ## Status
 
-No operational deployment runbooks exist because the current application is only a locally validated scaffold with no product behavior or verified production deployment procedure. Inventing runbooks now would create false operational capability.
+No production deployment runbooks exist because deployment has not been verified. The locally validated owner/session slice now supports the narrow development procedure below; broader operational instructions remain intentionally absent.
+
+## Reset Local Owner Authentication
+
+Use this only when a disposable local development owner must be recreated:
+
+```sh
+pnpm auth:reset:local
+pnpm setup:url
+```
+
+The reset deletes every owner/session row from the local D1 database while preserving its schema and migration history. It cannot target remote D1 because the command includes `--local`. It is destructive: the former local credentials and sessions stop working immediately. The second command prints the authorized first-run URL from the ignored `.dev.vars`; run `pnpm setup:local` instead if no local secret file exists.
 
 This document records the agreed operational contract and the threshold for creating concrete procedures.
 
