@@ -71,7 +71,7 @@ function successfulShopifyFetch(): typeof fetch {
       return Response.json({
         access_token: 'transient-token',
         expires_in: 86399,
-        scope: 'read_products,read_inventory,read_locations',
+        scope: 'read_products,read_inventory,read_locations,read_orders',
       })
     }
     return Response.json(
@@ -153,7 +153,7 @@ describe('Shopify verification transport', () => {
       Response.json({
         access_token: 'token',
         expires_in: 100,
-        scope: 'read_products,read_inventory',
+        scope: 'read_products,read_inventory,read_locations',
       }),
     ) as typeof fetch
     await expect(
@@ -163,7 +163,7 @@ describe('Shopify verification transport', () => {
       Response.json({
         access_token: 'token',
         expires_in: 100,
-        scope: 'read_products,read_inventory,read_locations',
+        scope: 'read_products,read_inventory,read_locations,read_orders',
       }),
     ) as typeof fetch
     vi.mocked(malformed)
@@ -171,7 +171,7 @@ describe('Shopify verification transport', () => {
         Response.json({
           access_token: 'token',
           expires_in: 100,
-          scope: 'read_products,read_inventory,read_locations',
+          scope: 'read_products,read_inventory,read_locations,read_orders',
         }),
       )
       .mockResolvedValueOnce(
@@ -189,7 +189,8 @@ describe('Shopify verification transport', () => {
     const fetcher = vi.fn(async () =>
       Response.json({
         access_token: 'token',
-        scope: 'read_products,read_inventory,read_locations,read_customers',
+        scope:
+          'read_products,read_inventory,read_locations,read_orders,read_customers',
       }),
     ) as typeof fetch
 
@@ -208,7 +209,7 @@ describe('Shopify verification transport', () => {
       .mockResolvedValueOnce(
         Response.json({
           access_token: 'token',
-          scope: 'read_products,read_inventory,read_locations',
+          scope: 'read_products,read_inventory,read_locations,read_orders',
         }),
       )
       .mockResolvedValueOnce(
@@ -228,7 +229,7 @@ describe('Shopify verification transport', () => {
     vi.mocked(wrongVersion).mockResolvedValueOnce(
       Response.json({
         access_token: 'token',
-        scope: 'read_products,read_inventory,read_locations',
+        scope: 'read_products,read_inventory,read_locations,read_orders',
       }),
     )
     vi.mocked(wrongVersion).mockResolvedValueOnce(
@@ -252,7 +253,7 @@ describe('Shopify verification transport', () => {
     vi.mocked(wrongShop).mockResolvedValueOnce(
       Response.json({
         access_token: 'token',
-        scope: 'read_products,read_inventory,read_locations',
+        scope: 'read_products,read_inventory,read_locations,read_orders',
       }),
     )
     vi.mocked(wrongShop).mockResolvedValueOnce(
@@ -534,7 +535,7 @@ describe('Shopify Admin API activation', () => {
         Response.json({
           access_token: 'transient',
           expires_in: 100,
-          scope: 'read_products,read_inventory,read_locations',
+          scope: 'read_products,read_inventory,read_locations,read_orders',
         }),
       )
       .mockReturnValueOnce(graphql)
@@ -586,7 +587,7 @@ describe('Shopify Admin API activation', () => {
       .mockResolvedValueOnce(
         Response.json({
           access_token: 'transient',
-          scope: 'read_products,read_inventory,read_locations',
+          scope: 'read_products,read_inventory,read_locations,read_orders',
         }),
       )
       .mockReturnValueOnce(graphql)

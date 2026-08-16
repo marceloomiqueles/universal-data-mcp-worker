@@ -12,6 +12,7 @@ import {
   getShopify,
   putShopify,
   syncShopify,
+  syncShopifyOrderSales,
   verifyShopify,
 } from './shopify'
 
@@ -518,6 +519,13 @@ export async function handleAdminApi(
     if (pathname === '/api/integrations/shopify/sync' && method === 'POST') {
       const originError = validateOrigin(request)
       return originError ?? (await syncShopify(env))
+    }
+    if (
+      pathname === '/api/integrations/shopify/orders/sync' &&
+      method === 'POST'
+    ) {
+      const originError = validateOrigin(request)
+      return originError ?? (await syncShopifyOrderSales(env))
     }
     if (
       pathname === '/api/integrations/shopify/disconnect' &&

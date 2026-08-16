@@ -157,7 +157,7 @@ function shopifyFetch(
     if (url.endsWith('/admin/oauth/access_token')) {
       return Response.json({
         access_token: 'transient-access-token',
-        scope: 'read_products,read_inventory,read_locations',
+        scope: 'read_products,read_inventory,read_locations,read_orders',
       })
     }
     const body = JSON.parse(String(init?.body)) as {
@@ -254,7 +254,7 @@ describe('Shopify inventory Admin boundary', () => {
       .mockResolvedValueOnce(
         Response.json({
           access_token: 'transient-access-token',
-          scope: 'read_products,read_inventory,read_locations',
+          scope: 'read_products,read_inventory,read_locations,read_orders',
         }),
       )
       .mockReturnValueOnce(delayed)
@@ -544,7 +544,7 @@ describe('Shopify inventory ingestion', () => {
       String(input).endsWith('/admin/oauth/access_token')
         ? Response.json({
             access_token: 'transient-access-token',
-            scope: 'read_products,read_inventory,read_locations',
+            scope: 'read_products,read_inventory,read_locations,read_orders',
           })
         : new Response('limited', { status: 429 }),
     ) as typeof fetch

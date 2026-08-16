@@ -2,6 +2,7 @@ export const SHOPIFY_API_VERSION = '2026-07'
 export const SHOPIFY_REQUIRED_SCOPES = [
   'read_inventory',
   'read_locations',
+  'read_orders',
   'read_products',
 ] as const
 
