@@ -1,5 +1,5 @@
 import { applyD1Migrations, env } from 'cloudflare:test'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { handleRequest, type Env } from '../../src/worker/index'
 
@@ -10,12 +10,17 @@ const assets = {
       headers: { 'content-type': 'text/html' },
     }),
 }
+const allowAllLogins: RateLimit = {
+  limit: async () => ({ success: true }),
+}
 
-function workerEnv(): Env {
+function workerEnv(overrides: Partial<Env> = {}): Env {
   return {
     ASSETS: assets,
     DB: env.DB,
+    LOGIN_RATE_LIMITER: allowAllLogins,
     OWNER_SETUP_TOKEN: env.OWNER_SETUP_TOKEN,
+    ...overrides,
   }
 }
 
@@ -69,7 +74,10 @@ describe('owner setup', () => {
       request('/api/auth/setup-status'),
       workerEnv(),
     )
-    await expect(status.json()).resolves.toEqual({ setupRequired: true })
+    await expect(status.json()).resolves.toEqual({
+      setupRequired: true,
+      bootstrapConfigured: true,
+    })
 
     const { response, cookie } = await setupOwner('Marcelo.Owner')
     expect(response.status).toBe(201)
@@ -106,7 +114,33 @@ describe('owner setup', () => {
       request('/api/auth/setup-status'),
       workerEnv(),
     )
-    await expect(configured.json()).resolves.toEqual({ setupRequired: false })
+    await expect(configured.json()).resolves.toEqual({
+      setupRequired: false,
+      bootstrapConfigured: false,
+    })
+  })
+
+  it('reports missing bootstrap configuration without accepting the example value', async () => {
+    const missingConfiguration = workerEnv({ OWNER_SETUP_TOKEN: '' })
+    const status = await handleRequest(
+      request('/api/auth/setup-status'),
+      missingConfiguration,
+    )
+
+    await expect(status.json()).resolves.toEqual({
+      setupRequired: true,
+      bootstrapConfigured: false,
+    })
+
+    const setup = await handleRequest(
+      post(
+        '/api/auth/setup',
+        { username: 'owner', password: 'correct horse battery staple' },
+        { 'x-owner-bootstrap-proof': '' },
+      ),
+      missingConfiguration,
+    )
+    expect(setup.status).toBe(403)
   })
 
   it('rejects missing setup authorization and invalid backend input', async () => {
@@ -237,6 +271,65 @@ describe('login and session lifecycle', () => {
     expect(await wrongUsername.json()).toEqual(await wrongPassword.json())
   })
 
+  it('rate limits repeated attempts and recovers without account lockout', async () => {
+    await setupOwner()
+    const limit = vi
+      .fn<RateLimit['limit']>()
+      .mockResolvedValueOnce({ success: true })
+      .mockResolvedValueOnce({ success: true })
+      .mockResolvedValueOnce({ success: false })
+      .mockResolvedValueOnce({ success: true })
+    const limitedEnv = workerEnv({ LOGIN_RATE_LIMITER: { limit } })
+    const headers = { 'cf-connecting-ip': '192.0.2.10' }
+
+    const first = await handleRequest(
+      post(
+        '/api/auth/login',
+        { username: 'owner', password: 'incorrect password one' },
+        headers,
+      ),
+      limitedEnv,
+    )
+    const second = await handleRequest(
+      post(
+        '/api/auth/login',
+        { username: 'owner', password: 'incorrect password two' },
+        headers,
+      ),
+      limitedEnv,
+    )
+    const limited = await handleRequest(
+      post(
+        '/api/auth/login',
+        { username: 'owner', password: 'incorrect password three' },
+        headers,
+      ),
+      limitedEnv,
+    )
+
+    expect(first.status).toBe(401)
+    expect(second.status).toBe(401)
+    expect(limited.status).toBe(429)
+    expect(limited.headers.get('retry-after')).toBe('60')
+    await expect(limited.json()).resolves.toEqual({
+      error: {
+        code: 'TOO_MANY_ATTEMPTS',
+        message: 'Too many sign-in attempts. Try again later.',
+      },
+    })
+    expect(limit).toHaveBeenCalledWith({ key: '192.0.2.10' })
+
+    const recovered = await handleRequest(
+      post(
+        '/api/auth/login',
+        { username: 'owner', password: 'correct horse battery staple' },
+        headers,
+      ),
+      limitedEnv,
+    )
+    expect(recovered.status).toBe(200)
+  })
+
   it('logs in, validates the session, and invalidates it on logout', async () => {
     await setupOwner()
     const loginResponse = await handleRequest(
@@ -302,6 +395,43 @@ describe('login and session lifecycle', () => {
       workerEnv(),
     )
     expect(expired.status).toBe(401)
+    expect(
+      await env.DB.prepare(
+        'SELECT COUNT(*) AS count FROM admin_sessions',
+      ).first('count'),
+    ).toBe(0)
+  })
+
+  it('removes at most 100 expired sessions during login and preserves active sessions', async () => {
+    await setupOwner()
+    await env.DB.prepare(
+      `WITH RECURSIVE sequence(value) AS (
+         SELECT 1
+         UNION ALL
+         SELECT value + 1 FROM sequence WHERE value < 105
+       )
+       INSERT INTO admin_sessions (token_digest, owner_id, created_at, expires_at)
+       SELECT 'expired-' || value, 1, 0, 0 FROM sequence`,
+    ).run()
+
+    const response = await handleRequest(
+      post('/api/auth/login', {
+        username: 'owner',
+        password: 'correct horse battery staple',
+      }),
+      workerEnv(),
+    )
+    expect(response.status).toBe(200)
+    expect(
+      await env.DB.prepare(
+        'SELECT COUNT(*) AS count FROM admin_sessions WHERE expires_at = 0',
+      ).first('count'),
+    ).toBe(5)
+    expect(
+      await env.DB.prepare(
+        'SELECT COUNT(*) AS count FROM admin_sessions WHERE expires_at > 0',
+      ).first('count'),
+    ).toBe(2)
   })
 })
 
@@ -344,6 +474,33 @@ describe('authorization and routing boundaries', () => {
         message: 'The request origin is not allowed.',
       },
     })
+  })
+
+  it('allows loopback HTTP Admin requests and rejects non-local HTTP', async () => {
+    const localStatus = await handleRequest(
+      request('/api/auth/setup-status', {}, 'http://127.0.0.1:5173'),
+      workerEnv(),
+    )
+    expect(localStatus.status).toBe(200)
+
+    const insecure = await handleRequest(
+      request('/api/auth/setup-status', {}, 'http://admin.example.test'),
+      workerEnv(),
+    )
+    expect(insecure.status).toBe(426)
+    expect(insecure.headers.get('upgrade')).toBe('TLS/1.2')
+    await expect(insecure.json()).resolves.toEqual({
+      error: {
+        code: 'HTTPS_REQUIRED',
+        message: 'HTTPS is required for administration requests.',
+      },
+    })
+
+    const mcp = await handleRequest(
+      request('/mcp', {}, 'http://admin.example.test'),
+      workerEnv(),
+    )
+    expect(mcp.status).toBe(501)
   })
 
   it.each(['/status', '/apiary', '/mcproxy'])(

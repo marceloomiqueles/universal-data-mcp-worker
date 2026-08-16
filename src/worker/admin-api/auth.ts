@@ -9,10 +9,13 @@ import {
 const SESSION_COOKIE = 'admin_session'
 const BOOTSTRAP_PROOF_HEADER = 'x-owner-bootstrap-proof'
 const SESSION_LIFETIME_SECONDS = 12 * 60 * 60
+const LOGIN_RATE_LIMIT_SECONDS = 60
+const EXPIRED_SESSION_CLEANUP_LIMIT = 100
 const USERNAME_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{2,63}$/u
 
 export interface AuthEnv {
   DB: D1Database
+  LOGIN_RATE_LIMITER: RateLimit
   OWNER_SETUP_TOKEN?: string
 }
 
@@ -39,8 +42,13 @@ function json(data: unknown, status = 200, headers?: HeadersInit): Response {
   return Response.json(data, { status, headers: responseHeaders })
 }
 
-function error(code: string, message: string, status: number): Response {
-  return json({ error: { code, message } }, status)
+function error(
+  code: string,
+  message: string,
+  status: number,
+  headers?: HeadersInit,
+): Response {
+  return json({ error: { code, message } }, status, headers)
 }
 
 function normalizeUsername(username: string): string {
@@ -87,6 +95,33 @@ function validateOrigin(request: Request): Response | undefined {
   }
 
   return undefined
+}
+
+function isLoopbackHostname(hostname: string): boolean {
+  return (
+    hostname === 'localhost' ||
+    hostname.endsWith('.localhost') ||
+    hostname === '127.0.0.1' ||
+    hostname === '[::1]'
+  )
+}
+
+function requireSecureTransport(request: Request): Response | undefined {
+  const url = new URL(request.url)
+  if (url.protocol === 'https:' || isLoopbackHostname(url.hostname)) {
+    return undefined
+  }
+
+  return error(
+    'HTTPS_REQUIRED',
+    'HTTPS is required for administration requests.',
+    426,
+    { upgrade: 'TLS/1.2' },
+  )
+}
+
+function loginRateLimitKey(request: Request): string {
+  return request.headers.get('cf-connecting-ip') ?? 'local-development'
 }
 
 async function getOwner(db: D1Database): Promise<OwnerRecord | null> {
@@ -176,13 +211,26 @@ async function validateSession(
     .bind(digest)
     .first<SessionRecord>()
 
-  if (!session || session.expires_at <= now) return null
+  if (!session) return null
+  if (session.expires_at <= now) {
+    await db
+      .prepare('DELETE FROM admin_sessions WHERE token_digest = ?')
+      .bind(digest)
+      .run()
+    return null
+  }
   return session
 }
 
 async function setupStatus(env: AuthEnv): Promise<Response> {
   const owner = await getOwner(env.DB)
-  return json({ setupRequired: owner === null })
+  return json({
+    setupRequired: owner === null,
+    bootstrapConfigured:
+      owner === null &&
+      typeof env.OWNER_SETUP_TOKEN === 'string' &&
+      env.OWNER_SETUP_TOKEN.length >= 32,
+  })
 }
 
 async function setupOwner(
@@ -265,6 +313,18 @@ async function login(
     return error('INVALID_CREDENTIALS', 'Invalid username or password.', 401)
   }
 
+  const rateLimit = await env.LOGIN_RATE_LIMITER.limit({
+    key: loginRateLimitKey(request),
+  })
+  if (!rateLimit.success) {
+    return error(
+      'TOO_MANY_ATTEMPTS',
+      'Too many sign-in attempts. Try again later.',
+      429,
+      { 'retry-after': LOGIN_RATE_LIMIT_SECONDS.toString() },
+    )
+  }
+
   const owner = await getOwner(env.DB)
   if (!owner) return error('SETUP_REQUIRED', 'Owner setup is required.', 409)
 
@@ -279,8 +339,16 @@ async function login(
     return error('INVALID_CREDENTIALS', 'Invalid username or password.', 401)
   }
 
-  await env.DB.prepare('DELETE FROM admin_sessions WHERE expires_at <= ?')
-    .bind(now)
+  await env.DB.prepare(
+    `DELETE FROM admin_sessions
+     WHERE token_digest IN (
+       SELECT token_digest FROM admin_sessions
+       WHERE expires_at <= ?
+       ORDER BY expires_at
+       LIMIT ?
+     )`,
+  )
+    .bind(now, EXPIRED_SESSION_CLEANUP_LIMIT)
     .run()
   const session = await createSession(env.DB, owner.id, now)
   await session.statement.run()
@@ -344,6 +412,9 @@ export async function handleAdminApi(
   const method = request.method.toUpperCase()
 
   try {
+    const transportError = requireSecureTransport(request)
+    if (transportError) return transportError
+
     if (pathname === '/api/auth/setup-status' && method === 'GET') {
       return await setupStatus(env)
     }

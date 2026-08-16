@@ -20,6 +20,7 @@ interface SessionResponse {
 
 interface SetupStatusResponse {
   setupRequired: boolean
+  bootstrapConfigured: boolean
 }
 
 interface ApiErrorResponse {
@@ -34,12 +35,15 @@ interface SessionState {
   owner: SessionOwner | null
   expiresAt: string | null
   bootstrapAvailable: boolean
+  bootstrapConfigured: boolean
+  localDevelopment: boolean
   pending: boolean
   error: string | null
 }
 
 interface BrowserLocation {
   hash: string
+  hostname: string
   pathname: string
   search: string
 }
@@ -71,7 +75,19 @@ function isSetupStatusResponse(value: unknown): value is SetupStatusResponse {
   return (
     Boolean(value) &&
     typeof value === 'object' &&
-    typeof (value as Partial<SetupStatusResponse>).setupRequired === 'boolean'
+    typeof (value as Partial<SetupStatusResponse>).setupRequired ===
+      'boolean' &&
+    typeof (value as Partial<SetupStatusResponse>).bootstrapConfigured ===
+      'boolean'
+  )
+}
+
+function isLocalDevelopmentHostname(hostname: string): boolean {
+  return (
+    hostname === 'localhost' ||
+    hostname.endsWith('.localhost') ||
+    hostname === '127.0.0.1' ||
+    hostname === '[::1]'
   )
 }
 
@@ -110,6 +126,8 @@ export function createAdminSession(options: SessionOptions = {}): AdminSession {
     owner: null,
     expiresAt: null,
     bootstrapAvailable: false,
+    bootstrapConfigured: false,
+    localDevelopment: isLocalDevelopmentHostname(browserLocation.hostname),
     pending: false,
     error: null,
   })
@@ -145,6 +163,7 @@ export function createAdminSession(options: SessionOptions = {}): AdminSession {
     }
 
     state.status = body.setupRequired ? 'setup' : 'login'
+    state.bootstrapConfigured = body.bootstrapConfigured
     if (!body.setupRequired) clearBootstrapProof()
   }
 

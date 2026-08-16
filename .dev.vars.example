@@ -1,0 +1,3 @@
+# Temporary proof used only to authorize first-owner creation.
+# Run `pnpm setup:local` to create a real ignored `.dev.vars` safely.
+OWNER_SETUP_TOKEN=""

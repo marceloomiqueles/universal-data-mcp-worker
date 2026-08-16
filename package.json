@@ -9,6 +9,9 @@
     "pnpm": ">=11.0.0"
   },
   "scripts": {
+    "setup:local": "node scripts/local-bootstrap.mjs create",
+    "setup:url": "node --env-file=.dev.vars scripts/local-bootstrap.mjs url",
+    "auth:reset:local": "wrangler d1 execute DB --local --command \"DELETE FROM admin_sessions; DELETE FROM owner_credentials;\"",
     "dev": "vite dev",
     "typecheck": "vue-tsc --noEmit -p tsconfig.admin-test.json && tsc --noEmit -p tsconfig.worker-test.json",
     "lint": "eslint .",

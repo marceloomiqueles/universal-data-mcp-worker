@@ -13,6 +13,32 @@ const passwordConfirmation = ref('')
 const validationError = ref<string | null>(null)
 
 const isSetup = computed(() => session.state.status === 'setup')
+const missingSetupConfiguration = computed(
+  () => isSetup.value && !session.state.bootstrapConfigured,
+)
+const missingBootstrapProof = computed(
+  () =>
+    isSetup.value &&
+    session.state.bootstrapConfigured &&
+    !session.state.bootstrapAvailable,
+)
+const setupUnavailable = computed(
+  () =>
+    isSetup.value &&
+    (!session.state.bootstrapConfigured || !session.state.bootstrapAvailable),
+)
+
+const setupGuidance = computed(() => {
+  if (missingSetupConfiguration.value) {
+    return session.state.localDevelopment
+      ? 'Local owner setup is not configured. Run `pnpm setup:local` and follow the Local development section in README.md.'
+      : 'Owner setup is not configured for this deployment.'
+  }
+
+  return session.state.localDevelopment
+    ? 'Open the authorized local setup URL printed by `pnpm setup:url`. See the Local development section in README.md.'
+    : 'Open the authorized setup link supplied for this deployment.'
+})
 
 function destination(): string {
   const redirect = route.query.redirect
@@ -68,12 +94,12 @@ async function submit() {
         </p>
 
         <VAlert
-          v-if="isSetup && !session.state.bootstrapAvailable"
+          v-if="missingSetupConfiguration || missingBootstrapProof"
           type="warning"
           variant="tonal"
           class="mb-5"
         >
-          Open the authorized setup link supplied for this deployment.
+          {{ setupGuidance }}
         </VAlert>
         <VAlert
           v-if="validationError || session.state.error"
@@ -115,7 +141,7 @@ async function submit() {
             type="submit"
             block
             :loading="session.state.pending"
-            :disabled="isSetup && !session.state.bootstrapAvailable"
+            :disabled="setupUnavailable"
           >
             {{ isSetup ? 'Create account' : 'Sign in' }}
           </VBtn>

@@ -12,6 +12,7 @@ interface RenderOptions {
   responses?: Response[]
   fetch?: typeof fetch
   hash?: string
+  hostname?: string
   beforeReady?: (element: HTMLElement) => Promise<void> | void
 }
 
@@ -63,6 +64,7 @@ async function render(options: RenderOptions = {}) {
     fetch: request,
     location: {
       hash: options.hash ?? '',
+      hostname: options.hostname ?? 'localhost',
       pathname: options.path ?? '/',
       search: '',
     },
@@ -113,7 +115,10 @@ describe('Admin session UI', () => {
     const { element, replaceState } = await render({
       path: '/login',
       hash: '#bootstrap=one-time-proof',
-      responses: [json({ error: {} }, 401), json({ setupRequired: true })],
+      responses: [
+        json({ error: {} }, 401),
+        json({ setupRequired: true, bootstrapConfigured: true }),
+      ],
     })
 
     expect(element.textContent).toContain('Set up your account')
@@ -128,11 +133,14 @@ describe('Admin session UI', () => {
   it('explains when the authorized setup context is missing', async () => {
     const { element } = await render({
       path: '/login',
-      responses: [json({ error: {} }, 401), json({ setupRequired: true })],
+      responses: [
+        json({ error: {} }, 401),
+        json({ setupRequired: true, bootstrapConfigured: true }),
+      ],
     })
 
     expect(element.textContent).toContain(
-      'Open the authorized setup link supplied for this deployment.',
+      'Open the authorized local setup URL printed by `pnpm setup:url`.',
     )
     expect(
       element.querySelector<HTMLButtonElement>('button[type="submit"]')
@@ -140,10 +148,44 @@ describe('Admin session UI', () => {
     ).toBe(true)
   })
 
+  it('explains missing local bootstrap configuration without exposing a secret', async () => {
+    const { element } = await render({
+      path: '/login',
+      responses: [
+        json({ error: {} }, 401),
+        json({ setupRequired: true, bootstrapConfigured: false }),
+      ],
+    })
+
+    expect(element.textContent).toContain(
+      'Local owner setup is not configured. Run `pnpm setup:local`',
+    )
+    expect(element.textContent).not.toContain('OWNER_SETUP_TOKEN')
+  })
+
+  it('keeps missing-proof production guidance concise', async () => {
+    const { element } = await render({
+      path: '/login',
+      hostname: 'admin.example.test',
+      responses: [
+        json({ error: {} }, 401),
+        json({ setupRequired: true, bootstrapConfigured: true }),
+      ],
+    })
+
+    expect(element.textContent).toContain(
+      'Open the authorized setup link supplied for this deployment.',
+    )
+    expect(element.textContent).not.toContain('pnpm setup:url')
+  })
+
   it('shows normal login when an owner exists without a session', async () => {
     const { element } = await render({
       path: '/login',
-      responses: [json({ error: {} }, 401), json({ setupRequired: false })],
+      responses: [
+        json({ error: {} }, 401),
+        json({ setupRequired: false, bootstrapConfigured: false }),
+      ],
     })
 
     expect(element.textContent).toContain('Sign in')
@@ -163,12 +205,24 @@ describe('Admin session UI', () => {
   })
 
   it('creates the first owner without placing bootstrap proof in account data', async () => {
-    const localStorageWrite = vi.spyOn(window.localStorage, 'setItem')
-    const sessionStorageWrite = vi.spyOn(window.sessionStorage, 'setItem')
+    const localStorageWrite = vi.fn()
+    const sessionStorageWrite = vi.fn()
+    Object.defineProperties(window, {
+      localStorage: {
+        configurable: true,
+        value: { setItem: localStorageWrite },
+      },
+      sessionStorage: {
+        configurable: true,
+        value: { setItem: sessionStorageWrite },
+      },
+    })
     const request = vi
       .fn<typeof fetch>()
       .mockResolvedValueOnce(json({ error: {} }, 401))
-      .mockResolvedValueOnce(json({ setupRequired: true }))
+      .mockResolvedValueOnce(
+        json({ setupRequired: true, bootstrapConfigured: true }),
+      )
       .mockResolvedValueOnce(authenticated('owner'))
     const { element } = await render({
       path: '/login',
@@ -200,7 +254,9 @@ describe('Admin session UI', () => {
     const request = vi
       .fn<typeof fetch>()
       .mockResolvedValueOnce(json({ error: {} }, 401))
-      .mockResolvedValueOnce(json({ setupRequired: true }))
+      .mockResolvedValueOnce(
+        json({ setupRequired: true, bootstrapConfigured: true }),
+      )
     const { element } = await render({
       path: '/login',
       hash: '#bootstrap=one-time-proof',
@@ -221,7 +277,9 @@ describe('Admin session UI', () => {
     const request = vi
       .fn<typeof fetch>()
       .mockResolvedValueOnce(json({ error: {} }, 401))
-      .mockResolvedValueOnce(json({ setupRequired: false }))
+      .mockResolvedValueOnce(
+        json({ setupRequired: false, bootstrapConfigured: false }),
+      )
       .mockResolvedValueOnce(authenticated())
     const { element } = await render({ path: '/login', fetch: request })
     const [username, password] = inputs(element)
@@ -240,7 +298,9 @@ describe('Admin session UI', () => {
     const request = vi
       .fn<typeof fetch>()
       .mockResolvedValueOnce(json({ error: {} }, 401))
-      .mockResolvedValueOnce(json({ setupRequired: false }))
+      .mockResolvedValueOnce(
+        json({ setupRequired: false, bootstrapConfigured: false }),
+      )
       .mockResolvedValueOnce(
         json(
           {
@@ -285,7 +345,10 @@ describe('Admin session UI', () => {
   it('redirects protected navigation to login for an unauthenticated user', async () => {
     const { element, router } = await render({
       path: '/status',
-      responses: [json({ error: {} }, 401), json({ setupRequired: false })],
+      responses: [
+        json({ error: {} }, 401),
+        json({ setupRequired: false, bootstrapConfigured: false }),
+      ],
     })
 
     expect(router.currentRoute.value.path).toBe('/login')
