@@ -109,6 +109,17 @@ pnpm exec wrangler login
 pnpm provision:cloudflare
 ```
 
+Cloudflare Workers Builds stores its command settings in Cloudflare rather than `wrangler.jsonc`; Cloudflare does not currently honor Wrangler Custom Builds configuration for this purpose. A Git-connected production Worker must use these exact settings under **Settings > Build**:
+
+```text
+Root directory: /
+Build command: pnpm build
+Deploy command: pnpm deploy
+Production branch: main
+```
+
+Workers Builds runs the build command once and then the deploy command once. `pnpm deploy` applies pending remote D1 migrations and performs the single Worker publication only after migration success. Do not use the default `npx wrangler deploy`: it bypasses the migration gate. The selected Workers Builds user token must retain the normal Worker deployment permissions and add account-level **D1 Edit** so Wrangler can apply migrations. A missing permission fails the build; migrations must never be skipped to make deployment pass. The corrected repository orchestration is validated locally against isolated D1 databases, but the effective production trigger remains unverified until these dashboard values and one real Git deployment are confirmed.
+
 The provisioner authenticates through Wrangler, creates or reuses the deterministically named D1 database, writes its non-secret ID into ignored `.wrangler.production.jsonc`, configures per-installation login and OAuth rate-limit namespaces, builds the application, applies pending remote migrations, generates the temporary owner bootstrap proof, uploads it with `wrangler deploy --strict --keep-vars --secrets-file`, validates the HTTPS Admin API surface, and prints the authorized first-owner URL. Wrangler automatically provisions and preserves the project-owned `OAUTH_KV` binding. Every run regenerates the deployment file from committed `wrangler.jsonc` and carries forward only installer-owned D1 identity. Wrangler strict mode stops on conflicting remote settings instead of silently removing dashboard-managed routes or domains, while `--keep-vars` preserves dashboard-managed variables. The committed `wrangler.jsonc` omits account-specific resource IDs so they never enter Git.
 
 The application runtime receives only logical bindings, including `DB`, `OAUTH_KV`, the two rate limiters, and `OWNER_SETUP_TOKEN`. It never receives Cloudflare account-management credentials or uses resource IDs directly.

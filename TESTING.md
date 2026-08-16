@@ -51,6 +51,8 @@ The script prints the authorized URL only after migrations succeed. It is safe t
 
 The Node setup-tool tests verify 256-bit Base64URL generation, private file permissions, repeat preservation, refusal to overwrite invalid configuration, the exact bootstrap-fragment contract, migration-before-URL ordering, and the deliberately unusable committed example. Provisioning-tool tests verify D1 reuse/fail-closed selection, regeneration from the committed template, defensive Wrangler `--strict`/`--keep-vars` deployment, refusal to replace a missing integration key while encrypted Shopify configuration exists, stable per-installation rate-limit namespaces, and workers.dev URL extraction without contacting Cloudflare. Browser-build inspection fails when any non-empty local `.dev.vars` value appears under `dist/client`.
 
+The production deployment-gate tests invoke Wrangler against isolated local D1 state. They prove that an existing database with a pending repository migration applies it before publication is allowed, a database with no pending migrations permits a repeat deployment, and a controlled invalid pending migration prevents the publication callback from running. These tests exercise the repository command boundary without contacting Cloudflare. Cloudflare Workers Builds settings remain remote state: verify under **Settings > Build** that the production trigger uses root `/`, build command `pnpm build`, and deploy command `pnpm deploy`, and that its user token includes account-level D1 Edit permission.
+
 The backend endpoints are:
 
 ```text

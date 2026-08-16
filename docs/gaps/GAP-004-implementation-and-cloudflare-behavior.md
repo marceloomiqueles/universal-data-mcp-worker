@@ -47,6 +47,8 @@ The first MCP consumer selected `@modelcontextprotocol/sdk` 1.30.0 and its Web-s
 
 The Shopify ingestion backend supplies the first concrete sync concurrency evidence. A D1 conditional state transition permits only one manual Shopify scan to advance at a time, bounded tests cover the conflict, and partial scans retain resumable cursors without reconciling deletions. This resolves the need for locking for this single-owner manual trigger only; stale-running recovery and any future scheduled/coalesced execution remain open and must be driven by operational evidence.
 
+The D1 deployment-lifecycle incident established that the Git-connected Worker used a deploy command that bypassed the repository's migration gate. The repository now has one tested production deploy orchestrator: it applies standard pending remote D1 migrations and invokes Worker publication only after success. Isolated Wrangler/D1 tests cover a newly pending migration, a no-pending redeploy, and a failed migration that prevents publication. Cloudflare stores the effective build/deploy commands outside `wrangler.jsonc`; production remains to be validated with root `/`, build command `pnpm build`, deploy command `pnpm deploy`, and a build token with account-level D1 Edit permission.
+
 ## Constraint While Open
 
 Do not select dependencies for convenience or add infrastructure without demonstrated need. Justify every dependency by problem, compatibility, bundle, maintenance, and security.
