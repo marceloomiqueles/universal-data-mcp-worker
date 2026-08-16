@@ -139,9 +139,9 @@ Cloudflare's Vite plugin intentionally places the local `.dev.vars` file in igno
 
 ## Secrets
 
-| Name | Source | Lifetime | Storage |
-|---|---|---|---|
-| `OWNER_SETUP_TOKEN` | Generated with Node cryptographic randomness | Required only until the singleton owner exists | Cloudflare Worker secret; temporary upload file is deleted |
+| Name                      | Source                                                       | Lifetime                                                  | Storage                                                                           |
+|---------------------------|--------------------------------------------------------------|-----------------------------------------------------------|-----------------------------------------------------------------------------------|
+| `OWNER_SETUP_TOKEN`       | Generated with Node cryptographic randomness                 | Required only until the singleton owner exists            | Cloudflare Worker secret; temporary upload file is deleted                        |
 | `INTEGRATION_SECRETS_KEY` | Generated as 32 random bytes encoded with unpadded Base64URL | Required while encrypted integration configuration exists | Cloudflare Worker secret; provisioned only when absent and never silently rotated |
 
 Shopify client credentials are supplied later through the authenticated Admin API, not through provisioning. The client secret is encrypted before D1 persistence using `INTEGRATION_SECRETS_KEY`. The key cannot be recovered from D1: losing or changing it makes existing encrypted credentials unreadable, so the owner must re-enter the affected configuration or disconnect it. Disconnect remains available because it does not decrypt the row. Provisioning detects the existing secret name and never silently replaces it; full key rotation is not implemented. Cloudflare authentication remains in Wrangler's standard credential storage and is never passed to the Worker.

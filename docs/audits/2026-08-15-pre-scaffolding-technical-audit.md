@@ -87,13 +87,13 @@ The JavaScript starter contradicts the TypeScript end-to-end decision. Laravel, 
 
 ## Starter Versus Alternatives
 
-| Option | Useful foundation | Inherited burden | Assessment |
-|---|---|---|---|
-| TypeScript Starter copied wholesale | Correct Vue/Vite/Vuetify shell and conventions | 427 files, broad Full-like dependencies, demo assets/components, fake auth assumptions, MSW postinstall | Too broad |
-| TypeScript Starter used selectively | Same proven visual foundation, with explicit provenance | Requires dependency tracing and careful file selection | **Recommended** after legal clearance |
-| Fresh Vue app plus hand-integrated Vuexy | Small initial app | Reconstructs coupled `@core`, `@layouts`, theme, styles, icons, and auto-import behavior | Unnecessary reinvention |
-| Full version | Every example is available | 1,411 files, fake API, business demos, maximum cleanup and maintenance | Reject |
-| Laravel or another packaged runtime | None relevant to the agreed runtime | Additional server/framework and separate deployment assumptions | Reject |
+| Option                                   | Useful foundation                                       | Inherited burden                                                                                        | Assessment                            |
+|------------------------------------------|---------------------------------------------------------|---------------------------------------------------------------------------------------------------------|---------------------------------------|
+| TypeScript Starter copied wholesale      | Correct Vue/Vite/Vuetify shell and conventions          | 427 files, broad Full-like dependencies, demo assets/components, fake auth assumptions, MSW postinstall | Too broad                             |
+| TypeScript Starter used selectively      | Same proven visual foundation, with explicit provenance | Requires dependency tracing and careful file selection                                                  | **Recommended** after legal clearance |
+| Fresh Vue app plus hand-integrated Vuexy | Small initial app                                       | Reconstructs coupled `@core`, `@layouts`, theme, styles, icons, and auto-import behavior                | Unnecessary reinvention               |
+| Full version                             | Every example is available                              | 1,411 files, fake API, business demos, maximum cleanup and maintenance                                  | Reject                                |
+| Laravel or another packaged runtime      | None relevant to the agreed runtime                     | Additional server/framework and separate deployment assumptions                                         | Reject                                |
 
 ## Vuexy Selection
 

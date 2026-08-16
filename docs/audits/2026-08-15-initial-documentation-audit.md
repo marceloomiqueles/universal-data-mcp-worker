@@ -15,17 +15,17 @@ This audit does not measure corporate compliance or production readiness. It rec
 
 ## Observed Evidence
 
-| Area | State before baseline | Evidence |
-|---|---|---|
-| Product code | Absent | No manifests, `src/`, frontend, Worker, or migrations |
-| Tests/tooling | Absent | No manifests, configuration, or commands |
-| Agent contract | Present and detailed | `AGENTS.md` |
-| README | Present but insufficient | Name and brief description only |
-| Architecture | Not materialized outside agent contract | No `ARCHITECTURE.md` |
-| ADRs | Absent | No `docs/adr/` |
-| Gaps | Listed only in `AGENTS.md` | No `docs/gaps/` |
-| Security/operations | Principles in `AGENTS.md`, no thematic map | No `docs/security/` or `docs/runbooks/` |
-| Plans/audits | Absent | No `docs/plans/` or `docs/audits/` |
+| Area                | State before baseline                      | Evidence                                              |
+|---------------------|--------------------------------------------|-------------------------------------------------------|
+| Product code        | Absent                                     | No manifests, `src/`, frontend, Worker, or migrations |
+| Tests/tooling       | Absent                                     | No manifests, configuration, or commands              |
+| Agent contract      | Present and detailed                       | `AGENTS.md`                                           |
+| README              | Present but insufficient                   | Name and brief description only                       |
+| Architecture        | Not materialized outside agent contract    | No `ARCHITECTURE.md`                                  |
+| ADRs                | Absent                                     | No `docs/adr/`                                        |
+| Gaps                | Listed only in `AGENTS.md`                 | No `docs/gaps/`                                       |
+| Security/operations | Principles in `AGENTS.md`, no thematic map | No `docs/security/` or `docs/runbooks/`               |
+| Plans/audits        | Absent                                     | No `docs/plans/` or `docs/audits/`                    |
 
 ## Established Architectural Decisions
 

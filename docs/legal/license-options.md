@@ -8,15 +8,15 @@ The Project Owner subsequently selected FSL-1.1-ALv2, recorded in [ADR-0006](../
 
 ## Comparison
 
-| Criterion | Apache-2.0 | MPL-2.0 | AGPL-3.0 |
-|---|---|---|---|
-| Model | Permissive | Weak file-level copyleft | Strong copyleft with network clause |
-| Forks and modifications | Allowed; normally no publication requirement | Allowed; distributed changes to covered files remain under MPL | Allowed; distributed derivative work must offer corresponding source under AGPL |
-| Redistribution | Allowed with license, notices, and conditions | Allowed with covered-file obligations | Allowed under AGPL copyleft conditions |
-| Commercial use | Allowed | Allowed | Allowed |
-| Service use | Does not itself require publishing changes | Operation without distribution normally does not trigger source distribution | Users interacting over a network with a modified version must be offered corresponding source |
-| Private software | Easy incorporation while preserving required notices | May be combined into a proprietary larger work while covered files remain under MPL | Incorporation into a proprietary derivative generally requires licensing the applicable whole under AGPL |
-| Public/private R&D | Maximum private reuse, lower reciprocity | Balance between open file improvements and private surrounding modules | Maximum reciprocity, greater friction for private reuse |
+| Criterion               | Apache-2.0                                           | MPL-2.0                                                                             | AGPL-3.0                                                                                                 |
+|-------------------------|------------------------------------------------------|-------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------|
+| Model                   | Permissive                                           | Weak file-level copyleft                                                            | Strong copyleft with network clause                                                                      |
+| Forks and modifications | Allowed; normally no publication requirement         | Allowed; distributed changes to covered files remain under MPL                      | Allowed; distributed derivative work must offer corresponding source under AGPL                          |
+| Redistribution          | Allowed with license, notices, and conditions        | Allowed with covered-file obligations                                               | Allowed under AGPL copyleft conditions                                                                   |
+| Commercial use          | Allowed                                              | Allowed                                                                             | Allowed                                                                                                  |
+| Service use             | Does not itself require publishing changes           | Operation without distribution normally does not trigger source distribution        | Users interacting over a network with a modified version must be offered corresponding source            |
+| Private software        | Easy incorporation while preserving required notices | May be combined into a proprietary larger work while covered files remain under MPL | Incorporation into a proprietary derivative generally requires licensing the applicable whole under AGPL |
+| Public/private R&D      | Maximum private reuse, lower reciprocity             | Balance between open file improvements and private surrounding modules              | Maximum reciprocity, greater friction for private reuse                                                  |
 
 Apache-2.0 favors broad adoption and private reuse and includes an express patent grant. MPL-2.0 seeks to return improvements to covered files without applying copyleft to an entire larger work. AGPL-3.0 seeks to make modified service versions available to their users.
 

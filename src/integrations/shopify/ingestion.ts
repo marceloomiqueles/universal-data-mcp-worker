@@ -366,10 +366,6 @@ function pending(value: string): PendingLevels[] {
   }
 }
 
-function uniqueProducts(variants: VariantRecord[]): number {
-  return new Set(variants.map((item) => item.product.id)).size
-}
-
 function upsertLevelStatements(
   db: D1Database,
   scanId: string,
@@ -484,14 +480,13 @@ async function commitVariantPage(
       .prepare(
         `UPDATE shopify_sync_runs SET top_cursor = ?, top_has_next = ?, pending_levels_json = ?,
           requests_count = requests_count + 1, pages_count = pages_count + 1,
-          products_count = products_count + ?, variants_count = variants_count + ?,
+          variants_count = variants_count + ?,
           levels_count = levels_count + ? WHERE id = ? AND status = 'running'`,
       )
       .bind(
         nextCursor,
         topHasNext ? 1 : 0,
         JSON.stringify(pendingLevels),
-        uniqueProducts(variants),
         variants.length,
         levels,
         run.id,
@@ -552,9 +547,11 @@ async function finishRun(
   await db
     .prepare(
       `UPDATE shopify_sync_runs SET status = ?, completed_at = ?, coverage_complete = ?,
-        last_error_code = ? WHERE id = ? AND status = 'running'`,
+        last_error_code = ?, products_count =
+          (SELECT COUNT(*) FROM shopify_products WHERE last_seen_scan_id = ?)
+        WHERE id = ? AND status = 'running'`,
     )
-    .bind(status, now, status === 'complete' ? 1 : 0, errorCode, id)
+    .bind(status, now, status === 'complete' ? 1 : 0, errorCode, id, id)
     .run()
   return (await latestRun(db))!
 }
@@ -604,11 +601,11 @@ export async function syncShopifyInventory(
   db: D1Database,
   encryptionKey: string,
   fetcher: typeof fetch = fetch,
-  now = Date.now(),
+  clock: () => number = Date.now,
 ): Promise<ShopifySyncResult> {
   const connected = await getConnectedShopifyCredentials(db, encryptionKey)
   if (!connected) throw new ShopifySyncConflictError('NOT_CONNECTED')
-  const run = await acquireRun(db, now)
+  const run = await acquireRun(db, clock())
   let invocationRequests = 0
   let invocationTopPages = 0
 
@@ -700,14 +697,14 @@ export async function syncShopifyInventory(
     const hasPending = pending(current.pending_levels_json).length > 0
     if (!topHasNextPage && !hasPending) {
       await reconcile(db, run.id)
-      return result(await finishRun(db, run.id, 'complete', now, null))
+      return result(await finishRun(db, run.id, 'complete', clock(), null))
     }
-    return result(await finishRun(db, run.id, 'partial', now, null))
+    return result(await finishRun(db, run.id, 'partial', clock(), null))
   } catch (cause) {
     const code =
       cause instanceof ShopifyConnectionError ? cause.code : 'UNKNOWN'
     const current = (await latestRun(db))!
     const status = current.pages_count > 0 ? 'partial' : 'failed'
-    return result(await finishRun(db, run.id, status, now, code))
+    return result(await finishRun(db, run.id, status, clock(), code))
   }
 }

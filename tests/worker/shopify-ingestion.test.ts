@@ -3,9 +3,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { encryptValue } from '../../src/core/security/encrypted-value'
 import {
+  getLastSuccessfulShopifySyncAt,
   SHOPIFY_MAX_GRAPHQL_REQUESTS,
   SHOPIFY_VARIANT_PAGE_SIZE,
+  syncShopifyInventory,
 } from '../../src/integrations/shopify/ingestion'
+import { queryShopifyInventory } from '../../src/integrations/shopify/inventory-query'
 import { handleRequest, type Env } from '../../src/worker/index'
 
 const origin = 'https://admin.example.test'
@@ -265,6 +268,115 @@ describe('Shopify inventory Admin boundary', () => {
 })
 
 describe('Shopify inventory ingestion', () => {
+  it('records the actual terminal time and exposes it as successful-sync freshness', async () => {
+    await connectedShopify()
+    const startedAt = Date.UTC(2026, 7, 16, 18, 0, 0)
+    const completedAt = startedAt + 45_000
+    const clock = vi
+      .fn<() => number>()
+      .mockReturnValueOnce(startedAt)
+      .mockReturnValueOnce(completedAt)
+
+    const result = await syncShopifyInventory(
+      env.DB,
+      key,
+      shopifyFetch(
+        new Map([
+          ['start', topPage([variant('1', '10', [level('1', '1', 4)])])],
+        ]),
+      ),
+      clock,
+    )
+
+    expect(result.startedAt).toBe(new Date(startedAt).toISOString())
+    expect(result.completedAt).toBe(new Date(completedAt).toISOString())
+    expect(Date.parse(result.startedAt)).toBeLessThan(
+      Date.parse(result.completedAt!),
+    )
+    await expect(getLastSuccessfulShopifySyncAt(env.DB)).resolves.toBe(
+      new Date(completedAt).toISOString(),
+    )
+    await expect(queryShopifyInventory(env.DB)).resolves.toMatchObject({
+      lastSuccessfulSyncAt: new Date(completedAt).toISOString(),
+    })
+  })
+
+  it.each([
+    {
+      name: 'failed',
+      pages: new Map<string, Response | (() => Response)>([
+        ['start', () => new Response('unavailable', { status: 503 })],
+      ]),
+      expectedStatus: 'failed',
+    },
+    {
+      name: 'partial',
+      pages: new Map<string, Response | (() => Response)>([
+        [
+          'start',
+          topPage([variant('1', '10', [level('1', '1', 4)])], true, 'page-1'),
+        ],
+        ['page-1', () => new Response('unavailable', { status: 503 })],
+      ]),
+      expectedStatus: 'partial',
+    },
+  ])(
+    'records the actual terminal time for a $name run',
+    async ({ pages, expectedStatus }) => {
+      await connectedShopify()
+      const startedAt = Date.UTC(2026, 7, 16, 19, 0, 0)
+      const completedAt = startedAt + 30_000
+      const clock = vi
+        .fn<() => number>()
+        .mockReturnValueOnce(startedAt)
+        .mockReturnValueOnce(completedAt)
+
+      const result = await syncShopifyInventory(
+        env.DB,
+        key,
+        shopifyFetch(pages),
+        clock,
+      )
+
+      expect(result).toMatchObject({
+        status: expectedStatus,
+        startedAt: new Date(startedAt).toISOString(),
+        completedAt: new Date(completedAt).toISOString(),
+      })
+    },
+  )
+
+  it('counts each product once across source pages and repeated syncs', async () => {
+    await connectedShopify()
+    const pages = new Map<string, Response>([
+      [
+        'start',
+        topPage([variant('1', 'A', [level('1', '1', 4)])], true, 'page-1'),
+      ],
+      [
+        'page-1',
+        topPage([
+          variant('2', 'A', [level('2', '1', 3)]),
+          variant('3', 'B', [level('3', '1', 2)]),
+        ]),
+      ],
+    ])
+
+    const first = await syncShopifyInventory(env.DB, key, shopifyFetch(pages))
+    expect(first.counts).toMatchObject({ products: 2, variants: 3 })
+    expect(await count('shopify_products')).toBe(2)
+    expect(await count('shopify_variants')).toBe(3)
+
+    const repeated = await syncShopifyInventory(
+      env.DB,
+      key,
+      shopifyFetch(pages),
+    )
+    expect(repeated.counts).toMatchObject({ products: 2, variants: 3 })
+    expect(await count('shopify_products')).toBe(2)
+    expect(await count('shopify_variants')).toBe(3)
+  })
+
   it('ingests multiple pages and locations idempotently without persisting the token', async () => {
     const cookie = await session()
     await connectedShopify()
