@@ -36,6 +36,12 @@ Garmin and Garmin Connect are third-party trademarks and services. The first Gar
 
 The unofficial provider must remain architecturally replaceable. Official Garmin access should be evaluated as the preferred long-term path. Stable commercial reliance on an unofficial provider requires separate evidence and review; see [GAP-009](../gaps/GAP-009-garmin-unofficial-provider.md).
 
+## Shopify
+
+Shopify is a third-party trademark and service. Shopify Spike 0 uses Shopify's official Dev Dashboard, client credentials grant, and Admin GraphQL API directly against a development store controlled by the Project Owner. No Shopify SDK or third-party Shopify source code is incorporated.
+
+The experiment is read-only and non-production. API access, scopes, test-store data, version support, throttling, and permitted use remain governed by Shopify's applicable developer, API, and service terms independently of the Project license. The experiment does not imply Shopify endorsement, partnership, or production-integration readiness.
+
 ## Future Integrations
 
 Every proposed integration must independently review and document:

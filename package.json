@@ -11,6 +11,7 @@
   "scripts": {
     "setup:local": "node scripts/local-bootstrap.mjs setup",
     "setup:url": "node scripts/local-bootstrap.mjs url",
+    "spike:shopify": "wrangler dev --config wrangler.shopify-spike.jsonc --port 8788",
     "provision:cloudflare": "node scripts/cloudflare-provision.mjs",
     "db:migrations:apply": "wrangler d1 migrations apply DB --remote",
     "deploy": "pnpm db:migrations:apply && wrangler deploy",

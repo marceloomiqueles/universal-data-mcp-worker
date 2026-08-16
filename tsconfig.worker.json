@@ -14,6 +14,7 @@
   "include": [
     "src/core/**/*.ts",
     "src/integrations/**/*.ts",
+    "src/spikes/**/*.ts",
     "src/worker/**/*.ts"
   ]
 }

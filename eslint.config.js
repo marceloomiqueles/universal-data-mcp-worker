@@ -24,7 +24,7 @@ export default tseslint.config(
     },
   },
   {
-    files: ['src/worker/**/*.ts'],
+    files: ['src/spikes/**/*.ts', 'src/worker/**/*.ts'],
     languageOptions: {
       globals: globals.serviceworker,
     },

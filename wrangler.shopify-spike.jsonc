@@ -1,0 +1,8 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "universal-data-mcp-worker-shopify-spike",
+  "main": "./src/spikes/shopify/worker.ts",
+  "compatibility_date": "2026-08-15",
+  "compatibility_flags": ["global_fetch_strictly_public"],
+  "workers_dev": false,
+}
