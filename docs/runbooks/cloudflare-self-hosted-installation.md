@@ -25,7 +25,7 @@ The public button is not enabled yet. Once the complete installation work is pre
 
 1. asks the user to authorize GitHub/GitLab and Cloudflare;
 2. creates a user-owned fork;
-3. reads `wrangler.jsonc` and provisions D1 for binding `DB`;
+3. reads `wrangler.jsonc` and provisions D1 for binding `DB`; the public template deliberately omits `database_id`, which is Cloudflare's automatic-provisioning signal;
 4. asks for the `OWNER_SETUP_TOKEN` secret declared by `.dev.vars.example`;
 5. runs `pnpm build` and `pnpm deploy` through Workers Builds;
 6. applies D1 migrations before deploying the Worker.

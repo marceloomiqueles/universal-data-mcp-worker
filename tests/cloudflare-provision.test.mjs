@@ -23,8 +23,7 @@ const draftConfig = `{
   "d1_databases": [
     {
       "binding": "DB",
-      "database_name": "universal-data-mcp-worker",
-      "database_id": "00000000-0000-0000-0000-000000000000"
+      "database_name": "universal-data-mcp-worker"
     },
   ]
 }`
@@ -62,6 +61,13 @@ describe('Cloudflare provisioning configuration', () => {
       updated,
       new RegExp(`"namespace_id": "${rateLimitNamespace(database.uuid)}"`, 'u'),
     )
+  })
+
+  it('keeps the public D1 binding eligible for automatic provisioning', async () => {
+    const source = await readFile('wrangler.jsonc', 'utf8')
+
+    assert.equal(configuredDatabaseId(source), undefined)
+    assert.doesNotMatch(source, /00000000-0000-0000-0000-000000000000/u)
   })
 
   it('deploys defensively without treating a stale generated snapshot as authority', () => {
@@ -120,12 +126,20 @@ describe('Cloudflare provisioning configuration', () => {
       { name: 'universal-data-mcp-worker', uuid: 'database-id' },
     ]
     assert.equal(
-      selectDatabase(
-        databases,
-        '00000000-0000-0000-0000-000000000000',
-        'universal-data-mcp-worker',
-      ),
+      selectDatabase(databases, undefined, 'universal-data-mcp-worker'),
       databases[0],
+    )
+  })
+
+  it('rejects the zero UUID instead of sending it to Cloudflare', () => {
+    assert.throws(
+      () =>
+        selectDatabase(
+          [],
+          '00000000-0000-0000-0000-000000000000',
+          'universal-data-mcp-worker',
+        ),
+      /invalid zero UUID placeholder/u,
     )
   })
 
