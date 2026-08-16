@@ -7,7 +7,13 @@ import {
 } from './crypto'
 import type { IntegrationRegistry } from '../../core/integrations/registry'
 import { listIntegrations } from './integrations'
-import { deleteShopify, getShopify, putShopify, verifyShopify } from './shopify'
+import {
+  deleteShopify,
+  getShopify,
+  putShopify,
+  syncShopify,
+  verifyShopify,
+} from './shopify'
 
 const SESSION_COOKIE = 'admin_session'
 const BOOTSTRAP_PROOF_HEADER = 'x-owner-bootstrap-proof'
@@ -508,6 +514,10 @@ export async function handleAdminApi(
     if (pathname === '/api/integrations/shopify/verify' && method === 'POST') {
       const originError = validateOrigin(request)
       return originError ?? (await verifyShopify(env))
+    }
+    if (pathname === '/api/integrations/shopify/sync' && method === 'POST') {
+      const originError = validateOrigin(request)
+      return originError ?? (await syncShopify(env))
     }
     if (
       pathname === '/api/integrations/shopify/disconnect' &&

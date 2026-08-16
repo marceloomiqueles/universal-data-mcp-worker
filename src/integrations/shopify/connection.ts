@@ -71,6 +71,33 @@ export async function readShopifyStatus(
   return (await row(db))?.status ?? 'not_configured'
 }
 
+export async function getConnectedShopifyCredentials(
+  db: D1Database,
+  key: string,
+): Promise<{
+  credentials: { shopDomain: string; clientId: string; clientSecret: string }
+  configurationUpdatedAt: number
+} | null> {
+  const existing = await row(db)
+  if (!existing || existing.status !== 'connected') return null
+  try {
+    return {
+      credentials: {
+        shopDomain: existing.shop_domain,
+        clientId: existing.client_id,
+        clientSecret: await decryptValue(
+          existing.client_secret_envelope,
+          key,
+          encryptionContext,
+        ),
+      },
+      configurationUpdatedAt: existing.updated_at,
+    }
+  } catch {
+    throw new ShopifyConnectionError('CREDENTIALS_UNAVAILABLE')
+  }
+}
+
 export async function saveShopifyConfiguration(
   db: D1Database,
   key: string,
