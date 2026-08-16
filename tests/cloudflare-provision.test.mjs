@@ -10,6 +10,7 @@ import {
   mcpOAuthRateLimitNamespace,
   rateLimitNamespace,
   regenerateProvisioningConfig,
+  secretListArguments,
   selectDatabase,
   shopifyConfigurationExists,
   updateProvisioningConfig,
@@ -35,6 +36,17 @@ const draftConfig = `{
 }`
 
 describe('Cloudflare provisioning configuration', () => {
+  it('uses the current Wrangler secret-list output option', () => {
+    assert.deepEqual(secretListArguments(), [
+      'secret',
+      'list',
+      '--format',
+      'json',
+      '--config',
+      '.wrangler.production.jsonc',
+    ])
+  })
+
   it('declares the native Workers Builds migration-before-deploy flow', async () => {
     const packageJson = JSON.parse(await readFile('package.json', 'utf8'))
 
