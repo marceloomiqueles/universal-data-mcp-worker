@@ -7,7 +7,7 @@ Installation status is tracked by path:
 - **Local installation:** validated from a clean checkout through owner creation, logout, and login.
 - **Wrangler CLI provisioning:** implemented and validated against real Cloudflare for D1 creation/reuse, migrations, deployment, bindings, HTTPS, setup status, and authorized-link generation.
 - **Safe CLI re-run:** defensive regeneration and fail-closed deployment are regression-tested; a disposable remote custom-domain conflict has not been exercised.
-- **Deploy to Cloudflare:** documented platform behavior only; the public button is withheld until the complete implementation is on the default branch and a clean-account deployment succeeds from that README.
+- **Deploy to Cloudflare:** the public button targets the default branch; clean-account deployment remains unvalidated.
 
 The installing owner must still complete account creation in their browser; the provisioner never chooses owner credentials.
 
@@ -21,7 +21,7 @@ Provisioning owns Cloudflare management operations. The deployed Worker consumes
 
 ### Browser-assisted deployment
 
-The public button is not enabled yet. Once the complete installation work is present on the public default branch, Cloudflare's native flow is expected to:
+Use the **Deploy to Cloudflare** button in the public README. Cloudflare's native flow is expected to:
 
 1. asks the user to authorize GitHub/GitLab and Cloudflare;
 2. creates a user-owned fork;
@@ -52,7 +52,7 @@ An earlier button URL was verified only to redirect to Cloudflare's authenticate
 5. combine the reported Worker host and retained value using the exact URL above;
 6. choose the owner username and password.
 
-The first four infrastructure operations are platform-managed, but steps 3 and 5 prevent this from being accurately described as one-click. Do not publish the button until the default-branch and clean-account checks above pass.
+The first four infrastructure operations are platform-managed, but steps 3 and 5 prevent this from being accurately described as one-click. Keep the flow marked unvalidated until the default-branch clean-account check passes.
 
 ### Wrangler deployment
 
@@ -177,6 +177,6 @@ The authenticated validation established:
 7. rate-limit binding acceptance;
 8. absence of production proof values from Git and client assets.
 
-The public Deploy to Cloudflare path and a disposable remote conflict/re-run remain unvalidated. The feature branch must reach the public default branch through the maintainer's normal merge workflow before the public button can be enabled and tested.
+The public Deploy to Cloudflare path and a disposable remote conflict/re-run remain unvalidated. Test the button from the public default-branch README; do not infer success from local configuration or a dashboard redirect.
 
 The installing owner completes username/password creation, session restoration, logout, and subsequent login through the generated link. These behaviors are already covered by the production-path Worker and Admin tests; the provisioner deliberately does not create credentials on the owner's behalf.
